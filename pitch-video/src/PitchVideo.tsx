@@ -6,6 +6,8 @@ import {
   interpolate,
   spring,
   Sequence,
+  Audio,
+  staticFile,
 } from "remotion";
 
 // ─── Slide Components ───────────────────────────────────────────────
@@ -222,6 +224,9 @@ const Arrow: React.FC<{ x1: number; y1: number; x2: number; y2: number; delay: n
 export const PitchVideo: React.FC = () => {
   return (
     <AbsoluteFill style={{ backgroundColor: "#0f0c29" }}>
+      {/* Background Music */}
+      <Audio src={staticFile("bgm.mp3")} volume={0.3} />
+
       {/* Slide 1: Hook (0-6s) */}
       <Sequence from={0} durationInFrames={180}>
         <Slide bg="linear-gradient(135deg, #0f0c29, #302b63, #24243e)">
@@ -288,7 +293,7 @@ export const PitchVideo: React.FC = () => {
             <Stat number="6.9M" label="US AD Patients" delay={40} color="#4CAF50" />
           </div>
           <Subtitle
-            text="EliseAI proved healthcare AI works ($250M Series E, $100M ARR). We go deeper — into cognitive care."
+            text="Healthcare AI SaaS is proven ($250M+ rounds, $100M+ ARR). We go deeper — into cognitive care."
             delay={55}
           />
         </Slide>
