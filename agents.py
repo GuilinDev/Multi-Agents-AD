@@ -92,10 +92,12 @@ class ConversationState:
         return PATIENTS[self.patient_id]
 
 
-def therapy_respond(state: ConversationState, user_message: str) -> str:
+def therapy_respond(state: ConversationState, user_message: str, memory_context: str = "") -> str:
     """Generate therapy agent response."""
     profile_text = json.dumps(state.patient, indent=2)
     system = THERAPY_SYSTEM.format(profile=profile_text)
+    if memory_context:
+        system += f"\n\nMEMORY FROM PREVIOUS SESSIONS:\n{memory_context}"
 
     state.therapy_history.append({"role": "user", "content": user_message})
     
