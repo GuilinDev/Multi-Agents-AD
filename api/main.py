@@ -11,6 +11,10 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 from rag_router import router as rag_router
+from event_router import router as event_router
+from patient_router import router as patient_router
+from handoff_router import router as handoff_router
+from models import init_db, seed_demo_data
 
 app = FastAPI(
     title="Memowell API",
@@ -26,13 +30,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# RAG Protocol Retrieval
-app.include_router(rag_router)
+# Initialize DB + seed
+init_db()
+seed_demo_data()
 
-# TODO: Event router (behavioral event report + parse + RAG)
-# TODO: Handoff router (shift handoff generation)
-# TODO: Patient router (CRUD)
-# TODO: Auth (simple PIN/invite code)
+# Routers
+app.include_router(rag_router)
+app.include_router(event_router)
+app.include_router(patient_router)
+app.include_router(handoff_router)
 
 
 @app.get("/api/health")
