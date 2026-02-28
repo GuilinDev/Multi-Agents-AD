@@ -34,10 +34,8 @@ export async function getSummary(patientId: string) {
 }
 
 export async function endSession(sessionId: string) {
-  const r = await fetch(`${BASE}/api/session/end`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ session_id: sessionId }),
-  });
+  const fd = new FormData();
+  fd.append('session_id', sessionId);
+  const r = await fetch(`${BASE}/api/session/end`, { method: 'POST', body: fd });
   return r.json();
 }

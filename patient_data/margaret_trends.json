@@ -1,0 +1,106 @@
+[
+  {
+    "session_date": "2026-02-27 21:42:57",
+    "turn": 1,
+    "emotion": "anxious",
+    "memory_quality": "confused",
+    "engagement": "low",
+    "scores": {
+      "emotion": 1,
+      "memory_quality": 1,
+      "engagement": 0
+    },
+    "risk_flags": "potential distress, possible hallucination (reference to 'Meimei' and 'Meimei's voice')"
+  },
+  {
+    "session_date": "2026-02-27 21:44:12",
+    "turn": 2,
+    "emotion": "anxious",
+    "memory_quality": "confused",
+    "engagement": "low",
+    "scores": {
+      "emotion": 1,
+      "memory_quality": 1,
+      "engagement": 0
+    },
+    "risk_flags": "increased agitation"
+  },
+  {
+    "session_date": "2026-02-27 21:44:55",
+    "turn": 3,
+    "emotion": "confused",
+    "memory_quality": "confused",
+    "engagement": "low",
+    "scores": {
+      "emotion": 2,
+      "memory_quality": 1,
+      "engagement": 0
+    },
+    "risk_flags": "increased agitation and distress"
+  },
+  {
+    "session_date": "2026-02-27 21:45:28",
+    "turn": 4,
+    "emotion": "confused",
+    "memory_quality": "confused",
+    "engagement": "low",
+    "scores": {
+      "emotion": 2,
+      "memory_quality": 1,
+      "engagement": 0
+    },
+    "risk_flags": "increased agitation, potential for frustration"
+  },
+  {
+    "session_date": "2026-02-27 21:46:24",
+    "turn": 5,
+    "emotion": "confused",
+    "memory_quality": "confused",
+    "engagement": "low",
+    "scores": {
+      "emotion": 2,
+      "memory_quality": 1,
+      "engagement": 0
+    },
+    "risk_flags": "increased confusion and disorganization, potential for frustration"
+  },
+  {
+    "session_date": "2026-02-27 21:47:50",
+    "turn": 6,
+    "emotion": "confused",
+    "memory_quality": "confused",
+    "engagement": "low",
+    "scores": {
+      "emotion": 2,
+      "memory_quality": 1,
+      "engagement": 0
+    },
+    "risk_flags": "increased agitation or frustration if not addressed"
+  },
+  {
+    "session_date": "2026-02-28 10:09:47",
+    "turn": 1,
+    "emotion": "happy",
+    "memory_quality": "clear",
+    "engagement": "high",
+    "scores": {
+      "emotion": 5,
+      "memory_quality": 3,
+      "engagement": 2
+    },
+    "risk_flags": ""
+  },
+  {
+    "session_date": "2026-02-28 10:22:58",
+    "turn": 1,
+    "emotion": "happy",
+    "memory_quality": "clear",
+    "engagement": "high",
+    "scores": {
+      "emotion": 5,
+      "memory_quality": 3,
+      "engagement": 2
+    },
+    "risk_flags": ""
+  }
+]
