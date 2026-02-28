@@ -49,11 +49,15 @@ from schemas import (
     SummaryResponse,
 )
 
+from rag_router import router as rag_router
+
 app = FastAPI(
     title="Memowell API",
-    description="Multi-Agent Alzheimer's Companion REST API",
-    version="1.0.0",
+    description="Voice-first Copilot for Dementia Behavioral Events — Caregiver Copilot REST API",
+    version="2.0.0",
 )
+
+app.include_router(rag_router)
 
 app.add_middleware(
     CORSMiddleware,

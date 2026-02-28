@@ -24,3 +24,4 @@ web/dist/
 # Monorepo
 apps/next/.next/
 node_modules/
+knowledge_base/chroma_db/
