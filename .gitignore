@@ -20,3 +20,7 @@ mobile/ios/
 api/__pycache__/
 web/node_modules/
 web/dist/
+
+# Monorepo
+apps/next/.next/
+node_modules/

@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "paths": {
+      "@memowell/app": ["../../packages/app"],
+      "@memowell/app/*": ["../../packages/app/*"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "../../packages/app/**/*.ts", "../../packages/app/**/*.tsx"]
+}

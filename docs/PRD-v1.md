@@ -2,7 +2,7 @@
 
 **产品定位**: Voice-first Copilot for Dementia Behavioral Events
 **目标用户**: 一线护工（CNA/nursing aide）、护士、护理机构管理者
-**产品形态**: PWA（iPad适配优先）→ 验证后上App Store / Google Play
+**产品形态**: 三端统一 — Expo + Solito + Next.js monorepo，共享FastAPI后端。PWA (Next.js+Serwist) + Android + iOS 一套代码
 **版本**: V1 MVP
 **最后更新**: 2026-02-28
 
@@ -191,11 +191,15 @@ AD患者出现行为事件（拒药、agitation、日落综合征、wandering等
 
 ```
 ┌──────────────────────────────────────────────┐
-│                  PWA Frontend                 │
-│          (React + TypeScript + Vite)          │
-│    iPad优先 / 手机兼容 / 可安装到主屏幕        │
+│        Frontend (Expo + Solito Monorepo)      │
+│                                               │
+│  packages/app/     共享screens + components   │
+│  apps/expo/        Android + iOS (Expo)       │
+│  apps/next/        Web/PWA (Next.js+Serwist)  │
+│                                               │
+│  iPad优先 / 手机兼容 / 三端一套代码            │
 └────────────────────┬─────────────────────────┘
-                     │ HTTPS REST API
+                     │ HTTPS REST API (共享)
 ┌────────────────────▼─────────────────────────┐
 │               FastAPI Backend                 │
 │                                               │
@@ -358,11 +362,16 @@ EventLog (Context → Intervention → Outcome)
 - [ ] 交接板自动生成
 - [ ] PWA前端（Events + Handoff + Patients三个Tab）
 
-**Week 5-6: 打磨 + Pilot准备**
+**Week 5-6: 打磨 + 三端上线 + Pilot准备**
 - [ ] iPad适配优化
 - [ ] 交接板PDF导出
-- [ ] 基本错误处理 + 离线缓存
+- [ ] 基本错误处理 + 离线缓存（Serwist）
 - [ ] Pilot部署包准备（给Wu老师的nursing home）
+
+**三端上线 Milestone:**
+- [ ] **Day 1**: PWA部署上线（Vercel，Next.js+Serwist）
+- [ ] **Week 1**: Android → EAS Build → Google Play上线（$25开发者账号）
+- [ ] **Week 2**: iOS → EAS Build → App Store上线（$99/yr，health category合规）
 
 ### 7.2 MVP不做的
 
@@ -371,7 +380,6 @@ EventLog (Context → Intervention → Outcome)
 - ❌ 多机构支持（V1单机构）
 - ❌ 患者陪伴聊天（保留代码，不进V1主流程）
 - ❌ 合规报告生成（V1.1）
-- ❌ 原生App（先PWA验证）
 
 ### 7.3 成功指标
 
