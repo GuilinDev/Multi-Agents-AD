@@ -13,3 +13,8 @@ pitch-video/out/
 *.wav
 *.webm
 *.ogg
+mobile/node_modules/
+mobile/.expo/
+mobile/android/
+mobile/ios/
+api/__pycache__/
