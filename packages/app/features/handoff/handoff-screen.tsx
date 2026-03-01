@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { colors } from '../../theme/colors';
 import { SignaturePad } from '../../components/signature-pad';
-import { listEvents, generateHandoff, acknowledgeHandoff } from '../../api/client';
-import type { EventOut } from '../../types';
+import { listEvents, generateHandoff, acknowledgeHandoff, listHandoffs } from '../../api/client';
+import type { EventOut, HandoffOut } from '../../types';
 
 export function HandoffScreen() {
   const [events, setEvents] = useState<EventOut[]>([]);
@@ -12,6 +12,7 @@ export function HandoffScreen() {
   const [signed, setSigned] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [handoffs, setHandoffs] = useState<HandoffOut[]>([]);
 
   useEffect(() => {
     loadEvents();
@@ -21,8 +22,9 @@ export function HandoffScreen() {
     try {
       setLoading(true);
       setError(null);
-      const data = await listEvents();
+      const [data, handoffData] = await Promise.all([listEvents(), listHandoffs()]);
       setEvents(data);
+      setHandoffs(handoffData);
     } catch (e: any) {
       setError(e.message || 'Failed to load events');
     } finally {
@@ -145,6 +147,26 @@ export function HandoffScreen() {
           </>
         )}
       </View>
+      {/* Handoff History */}
+      {handoffs.length > 0 && (
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Handoff History</Text>
+          {handoffs.map((h) => (
+            <View key={h.id} style={styles.eventRow}>
+              <Text style={styles.eventTime}>{h.shift || 'Day'}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.eventText}>
+                  {h.summary || `Handoff #${h.id}`}
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.textLight, marginTop: 2 }}>
+                  {h.acknowledged ? '✅ Acknowledged' : '⏳ Pending'}
+                  {h.created_at ? ` · ${new Date(h.created_at).toLocaleDateString()}` : ''}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 }
