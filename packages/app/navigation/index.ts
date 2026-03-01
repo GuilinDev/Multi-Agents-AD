@@ -6,5 +6,6 @@ export const routes = {
   home: '/',
   chat: '/chat',
   dashboard: '/dashboard',
+  handoff: '/handoff',
   settings: '/settings',
 } as const;

@@ -1,21 +1,37 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { colors } from '../../theme/colors';
 import { SignaturePad } from '../../components/signature-pad';
-
-const MOCK_EVENTS = [
-  { id: '1', time: '08:15', text: 'Morning medication administered — Donepezil 10mg' },
-  { id: '2', time: '10:30', text: 'Patient showed mild confusion during breakfast' },
-  { id: '3', time: '14:00', text: 'Family visit — daughter stayed 1 hour, positive mood' },
-];
-
-const MOCK_ALERTS = [
-  { id: 'a1', text: '⚠️ Fall risk flagged at 11:45 — patient attempted to stand unassisted' },
-];
+import { listEvents, generateHandoff, acknowledgeHandoff } from '../../api/client';
+import type { EventOut } from '../../types';
 
 export function HandoffScreen() {
+  const [events, setEvents] = useState<EventOut[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [signed, setSigned] = useState(false);
   const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    loadEvents();
+  }, []);
+
+  async function loadEvents() {
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await listEvents();
+      setEvents(data);
+    } catch (e: any) {
+      setError(e.message || 'Failed to load events');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const alerts = events.filter((e) => e.severity === 'high' || e.severity === 'critical');
+  const regularEvents = events;
 
   const handleConfirmSignature = (data: string) => {
     setSignatureData(data);
@@ -23,11 +39,49 @@ export function HandoffScreen() {
 
   const handleSubmitHandoff = async () => {
     if (!signatureData) return;
-    // Mock API call
-    console.log('Handoff submitted with signature:', signatureData);
-    setSigned(true);
-    Alert.alert('Handoff Complete', 'Shift handoff has been recorded successfully.');
+    try {
+      setSubmitting(true);
+      // Generate handoff for current shift
+      const patientIds = [...new Set(events.map((e) => e.patient_id))];
+      const handoff = await generateHandoff('day', 1, patientIds);
+      // Acknowledge the handoff
+      if (handoff?.id) {
+        await acknowledgeHandoff(handoff.id);
+      }
+      setSigned(true);
+      Alert.alert('Handoff Complete', 'Shift handoff has been recorded successfully.');
+    } catch (e: any) {
+      Alert.alert('Error', e.message || 'Failed to submit handoff');
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  function formatTime(dateStr?: string): string {
+    if (!dateStr) return '--:--';
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{ marginTop: 12, color: colors.textSecondary }}>Loading events...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+        <Text style={{ color: colors.error, fontSize: 16, textAlign: 'center', marginBottom: 16 }}>{error}</Text>
+        <TouchableOpacity onPress={loadEvents} style={styles.submitButton}>
+          <Text style={styles.submitText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -38,32 +92,36 @@ export function HandoffScreen() {
         <Text style={styles.cardTitle}>Shift Summary</Text>
         <View style={styles.summaryRow}>
           <View style={styles.summaryItem}>
-            <Text style={styles.summaryNumber}>3</Text>
+            <Text style={styles.summaryNumber}>{events.length}</Text>
             <Text style={styles.summaryLabel}>Events</Text>
           </View>
           <View style={styles.summaryItem}>
-            <Text style={[styles.summaryNumber, { color: colors.warning }]}>1</Text>
-            <Text style={styles.summaryLabel}>Alert</Text>
+            <Text style={[styles.summaryNumber, { color: colors.warning }]}>{alerts.length}</Text>
+            <Text style={styles.summaryLabel}>Alerts</Text>
           </View>
         </View>
       </View>
 
       {/* Alerts */}
-      {MOCK_ALERTS.map((alert) => (
+      {alerts.map((alert) => (
         <View key={alert.id} style={styles.alertCard}>
-          <Text style={styles.alertText}>{alert.text}</Text>
+          <Text style={styles.alertText}>⚠️ {alert.description}</Text>
         </View>
       ))}
 
       {/* Events */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Events</Text>
-        {MOCK_EVENTS.map((event) => (
-          <View key={event.id} style={styles.eventRow}>
-            <Text style={styles.eventTime}>{event.time}</Text>
-            <Text style={styles.eventText}>{event.text}</Text>
-          </View>
-        ))}
+        {regularEvents.length === 0 ? (
+          <Text style={{ color: colors.textSecondary, fontStyle: 'italic' }}>No events recorded this shift.</Text>
+        ) : (
+          regularEvents.map((event) => (
+            <View key={event.id} style={styles.eventRow}>
+              <Text style={styles.eventTime}>{formatTime(event.event_at || event.created_at)}</Text>
+              <Text style={styles.eventText}>{event.description}</Text>
+            </View>
+          ))
+        )}
       </View>
 
       {/* Signature */}
@@ -77,11 +135,11 @@ export function HandoffScreen() {
           <>
             <SignaturePad onConfirm={handleConfirmSignature} />
             <TouchableOpacity
-              style={[styles.submitButton, !signatureData && styles.submitDisabled]}
+              style={[styles.submitButton, (!signatureData || submitting) && styles.submitDisabled]}
               onPress={handleSubmitHandoff}
-              disabled={!signatureData}
+              disabled={!signatureData || submitting}
             >
-              <Text style={styles.submitText}>确认交接</Text>
+              <Text style={styles.submitText}>{submitting ? 'Submitting...' : '确认交接'}</Text>
             </TouchableOpacity>
           </>
         )}
