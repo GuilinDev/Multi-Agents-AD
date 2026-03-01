@@ -31,7 +31,7 @@ def _get_collection():
 
 def search_protocols(
     query: str,
-    n_results: int = 5,
+    n_results: int = 3,
     source_filter: str | None = None,
 ) -> list[dict]:
     """
@@ -73,7 +73,43 @@ def search_protocols(
     return output
 
 
-def search_by_event_type(event_type: str, n_results: int = 5) -> list[dict]:
+def format_protocol_for_display(results: list[dict]) -> list[dict]:
+    """Format raw RAG results for caregiver-friendly display."""
+    formatted = []
+    for r in results:
+        text = r.get("text", "")
+        # Truncate to 500 chars at sentence boundary
+        if len(text) > 500:
+            truncated = text[:500]
+            last_period = truncated.rfind(". ")
+            if last_period > 300:
+                truncated = truncated[:last_period + 1]
+            text_preview = truncated
+        else:
+            text_preview = text
+        
+        # Actionable summary: first 150 chars (will be replaced by LLM later)
+        summary_text = text[:150].strip()
+        if len(text) > 150:
+            last_space = summary_text.rfind(" ")
+            if last_space > 100:
+                summary_text = summary_text[:last_space]
+            summary_text += "..."
+        
+        formatted.append({
+            "source": r.get("source", "Unknown"),
+            "title": r.get("title", "Unknown"),
+            "page": r.get("page", 0),
+            "filename": r.get("filename", ""),
+            "score": r.get("score"),
+            "text": r.get("text", ""),
+            "text_preview": text_preview,
+            "actionable_summary": summary_text,
+        })
+    return formatted
+
+
+def search_by_event_type(event_type: str, n_results: int = 3) -> list[dict]:
     """
     Search protocols by behavioral event type.
     Maps common event types to optimized search queries.

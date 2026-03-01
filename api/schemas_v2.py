@@ -22,12 +22,14 @@ class EventParsed(BaseModel):
     summary: str
 
 class ProtocolStep(BaseModel):
-    text: str
+    text: Optional[str] = None
+    text_preview: Optional[str] = None
     source: str
-    title: str
+    title: Optional[str] = None
     page: int
-    filename: str
+    filename: Optional[str] = None
     score: Optional[float] = None
+    steps: Optional[list[str]] = None
 
 class EventReportResponse(BaseModel):
     event_id: int

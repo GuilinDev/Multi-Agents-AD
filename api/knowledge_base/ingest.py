@@ -17,8 +17,8 @@ COLLECTION_NAME = "dementia_care_guidelines"
 EMBEDDING_MODEL = "all-MiniLM-L6-v2"  # Fast, 384-dim, good for retrieval
 CHUNK_SIZE = 500  # ~500 tokens ≈ ~2000 chars
 CHUNK_OVERLAP = 50  # ~50 tokens ≈ ~200 chars
-CHARS_PER_CHUNK = 2000
-CHARS_OVERLAP = 200
+CHARS_PER_CHUNK = 800
+CHARS_OVERLAP = 100
 
 # Source metadata for each PDF
 PDF_METADATA = {

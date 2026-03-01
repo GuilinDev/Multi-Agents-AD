@@ -70,8 +70,25 @@ async def report_event(
     except ValueError:
         severity = Severity.MEDIUM
 
-    # Search protocols via RAG
-    protocols = rag_service.search_by_event_type(event_type.value)
+    # Skip RAG for positive/no-issue reports
+    if event_type == EventType.OTHER and severity == Severity.LOW:
+        protocols_formatted = []
+        summarized = [{"source": "N/A", "page": 0, "steps": ["No specific protocols needed. Continue monitoring."]}]
+    else:
+        # Search protocols via RAG
+        raw_protocols = rag_service.search_by_event_type(event_type.value)
+        protocols_formatted = rag_service.format_protocol_for_display(raw_protocols)
+
+        # LLM post-processing: summarize into actionable steps
+        try:
+            summarized = await llm_service.summarize_protocols(description, protocols_formatted)
+        except Exception:
+            summarized = []
+
+        # Merge steps back into formatted protocols
+        for i, p in enumerate(protocols_formatted):
+            if i < len(summarized):
+                p["steps"] = summarized[i].get("steps", [])
 
     # Create DB record
     event = BehavioralEvent(
@@ -84,18 +101,27 @@ async def report_event(
         location=parsed.get("location", "Unknown"),
         trigger=parsed.get("trigger", "Unknown"),
         protocol_matched=[
-            {"source": p["source"], "title": p["title"], "page": p["page"], "text": p["text"][:200]}
-            for p in protocols
+            {"source": s.get("source", ""), "page": s.get("page", 0), "steps": s.get("steps", [])}
+            for s in summarized
         ],
     )
     db.add(event)
     db.commit()
     db.refresh(event)
 
+    # Build response protocols
+    if protocols_formatted:
+        response_protocols = [ProtocolStep(**p) for p in protocols_formatted]
+    else:
+        response_protocols = [
+            ProtocolStep(source=s.get("source", "N/A"), page=s.get("page", 0), steps=s.get("steps", []))
+            for s in summarized
+        ]
+
     return EventReportResponse(
         event_id=event.id,
         parsed=EventParsed(**parsed),
-        protocols=[ProtocolStep(**p) for p in protocols],
+        protocols=response_protocols,
         transcription=transcription,
     )
 

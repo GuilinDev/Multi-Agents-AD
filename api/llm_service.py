@@ -61,6 +61,50 @@ async def parse_event(text: str) -> dict:
     return json.loads(raw)
 
 
+async def summarize_protocols(event_description: str, raw_protocols: list[dict]) -> list[dict]:
+    """Summarize raw protocol chunks into actionable steps for caregivers."""
+    client = _get_client()
+    
+    protocols_text = ""
+    for i, p in enumerate(raw_protocols):
+        protocols_text += f"\n--- Protocol {i+1} [Source: {p.get('source','Unknown')}, Page: {p.get('page',0)}] ---\n"
+        protocols_text += p.get("text", p.get("text_preview", ""))[:500] + "\n"
+    
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are a clinical protocol summarizer for dementia caregivers.\n"
+                    "Given a behavioral event description and relevant protocol excerpts, produce actionable steps.\n\n"
+                    "Rules:\n"
+                    "- For each protocol, produce 2-3 specific action steps (one sentence each)\n"
+                    "- Keep language simple and direct — these are for frontline caregivers\n"
+                    "- Preserve the source reference\n"
+                    "- If the event is a POSITIVE report (no behavioral issues), respond with a single entry:\n"
+                    '  [{"source":"N/A","page":0,"steps":["No specific protocols needed. Continue monitoring."]}]\n\n'
+                    "Respond in JSON only: list of {source, page, steps: [str]}\n"
+                    "No markdown, no explanation."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Event: {event_description}\n\nProtocols:\n{protocols_text}",
+            },
+        ],
+        temperature=0.1,
+        max_tokens=500,
+    )
+    raw = response.choices[0].message.content.strip()
+    if raw.startswith("```"):
+        raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
+        if raw.endswith("```"):
+            raw = raw[:-3]
+        raw = raw.strip()
+    return json.loads(raw)
+
+
 async def summarize_events(events_data: list[dict]) -> dict:
     """Summarize a list of events for shift handoff. Returns {summary, pending_items}."""
     client = _get_client()

@@ -25,6 +25,46 @@ import { VoiceButton } from '../../components/voice-button';
 
 const REPORTER_ID = 1; // hardcoded demo user
 
+function ProtocolCard({ protocol }: { protocol: any }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasSteps = protocol.steps && protocol.steps.length > 0;
+  const sourceLabel = protocol.source || 'Unknown';
+  
+  return (
+    <View style={styles.protocolCard}>
+      <View style={styles.protocolHeader}>
+        <View style={styles.sourceTag}>
+          <Text style={styles.sourceTagText}>{sourceLabel}</Text>
+        </View>
+        {protocol.page > 0 && (
+          <Text style={styles.protocolPage}>p.{protocol.page}</Text>
+        )}
+      </View>
+      {hasSteps ? (
+        <View style={styles.stepsContainer}>
+          {protocol.steps.map((step: string, idx: number) => (
+            <Text key={idx} style={styles.stepText}>✅ {step}</Text>
+          ))}
+        </View>
+      ) : (
+        <Text style={styles.protocolText} numberOfLines={expanded ? undefined : 4}>
+          {(protocol.text_preview || protocol.text || '').substring(0, 200)}
+        </Text>
+      )}
+      {protocol.text && protocol.text.length > 200 && (
+        <TouchableOpacity onPress={() => setExpanded(!expanded)}>
+          <Text style={styles.expandToggle}>
+            {expanded ? 'Show less ▲' : 'Show more ▼'}
+          </Text>
+        </TouchableOpacity>
+      )}
+      {expanded && protocol.text && (
+        <Text style={styles.fullText}>{protocol.text}</Text>
+      )}
+    </View>
+  );
+}
+
 interface Props {
   patientId: string;
   patientName: string;
@@ -196,18 +236,19 @@ export function ChatScreen({ patientId, patientName }: Props) {
               <Text style={styles.parsedValue}>{result.parsed.summary}</Text>
             </View>
 
-            {result.protocols.length > 0 && (
+            {result.protocols.length > 0 ? (
               <>
                 <Text style={styles.protocolTitle}>Protocol Suggestions</Text>
                 {result.protocols.map((p, i) => (
-                  <View key={i} style={styles.protocolCard}>
-                    <Text style={styles.protocolText}>{p.text}</Text>
-                    <Text style={styles.protocolSource}>
-                      {p.title} · p.{p.page} · {p.filename}
-                    </Text>
-                  </View>
+                  <ProtocolCard key={i} protocol={p} />
                 ))}
               </>
+            ) : (
+              <View style={styles.noProtocolBanner}>
+                <Text style={styles.noProtocolText}>
+                  ✅ No behavioral issues detected. Continue routine monitoring.
+                </Text>
+              </View>
             )}
 
             {/* Action buttons */}
@@ -399,8 +440,25 @@ const styles = StyleSheet.create({
   },
   protocolCard: {
     backgroundColor: colors.card, borderRadius: 12, padding: 12, marginBottom: 8,
+    borderLeftWidth: 3, borderLeftColor: colors.primary,
   },
+  protocolHeader: {
+    flexDirection: 'row', alignItems: 'center', marginBottom: 8, gap: 8,
+  },
+  sourceTag: {
+    backgroundColor: colors.primary, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2,
+  },
+  sourceTagText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+  protocolPage: { fontSize: 12, color: colors.textSecondary },
+  stepsContainer: { gap: 6 },
+  stepText: { fontSize: 14, color: colors.text, lineHeight: 20 },
   protocolText: { fontSize: 14, color: colors.text, lineHeight: 20 },
+  expandToggle: { fontSize: 13, color: colors.primary, marginTop: 6, fontWeight: '600' },
+  fullText: { fontSize: 13, color: colors.textSecondary, marginTop: 8, lineHeight: 18 },
+  noProtocolBanner: {
+    backgroundColor: '#E8F5E9', borderRadius: 12, padding: 16, marginTop: 16,
+  },
+  noProtocolText: { fontSize: 15, color: '#2E7D32', textAlign: 'center', fontWeight: '600' },
   protocolSource: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
 
   actionRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
