@@ -3,15 +3,15 @@ import { ChatScreen } from '@memowell/app';
 
 export default function ChatPage() {
   const router = useRouter();
-  const { sessionId, patientName } = router.query;
+  const { patientId, patientName } = router.query;
 
-  if (!sessionId || !patientName) {
+  if (!patientId || !patientName) {
     return null;
   }
 
   return (
     <ChatScreen
-      sessionId={sessionId as string}
+      patientId={patientId as string}
       patientName={patientName as string}
     />
   );

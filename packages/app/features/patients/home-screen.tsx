@@ -4,19 +4,17 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'solito/router';
 import { colors } from '../../theme/colors';
 import type { Patient } from '../../types';
-import { getPatients, startSession } from '../../api/client';
+import { getPatients } from '../../api/client';
 
 export function HomeScreen() {
   const router = useRouter();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selected, setSelected] = useState<string>('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -33,32 +31,24 @@ export function HomeScreen() {
     }
   };
 
-  const handleStart = async () => {
+  const handleStart = () => {
     if (!selected) return;
-    setLoading(true);
-    setError('');
-    try {
-      const session = await startSession(selected);
-      router.push({
-        pathname: '/chat',
-        query: {
-          sessionId: session.session_id,
-          patientName: session.patient_name,
-          patientId: session.patient_id,
-        },
-      });
-    } catch (e: any) {
-      setError(e.message || 'Failed to start session');
-    } finally {
-      setLoading(false);
-    }
+    const patient = patients.find((p) => p.id === selected);
+    if (!patient) return;
+    router.push({
+      pathname: '/chat',
+      query: {
+        patientId: patient.id,
+        patientName: patient.name,
+      },
+    });
   };
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
       <Text style={styles.emoji}>🧠</Text>
       <Text style={styles.title}>Memowell</Text>
-      <Text style={styles.subtitle}>Reminiscence Therapy Companion</Text>
+      <Text style={styles.subtitle}>Behavioral Event Reporter</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -79,16 +69,12 @@ export function HomeScreen() {
       ))}
 
       <TouchableOpacity
-        style={[styles.startButton, (!selected || loading) && styles.startButtonDisabled]}
+        style={[styles.startButton, !selected && styles.startButtonDisabled]}
         onPress={handleStart}
-        disabled={!selected || loading}
+        disabled={!selected}
         activeOpacity={0.7}
       >
-        {loading ? (
-          <ActivityIndicator color="#FFF" />
-        ) : (
-          <Text style={styles.startButtonText}>Start Session</Text>
-        )}
+        <Text style={styles.startButtonText}>Report Event</Text>
       </TouchableOpacity>
     </ScrollView>
   );

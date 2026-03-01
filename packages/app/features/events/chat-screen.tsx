@@ -1,84 +1,125 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
+  ScrollView,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Modal,
+  Switch,
 } from 'react-native';
 import { useRouter } from 'solito/router';
 import { colors } from '../../theme/colors';
-import type { ChatMessage } from '../../types';
-import { sendMessage, endSession, getBaseUrl } from '../../api/client';
-import { MessageBubble } from '../../components/message-bubble';
+import type { EventReportResponse, EventOut } from '../../types';
+import {
+  reportEvent,
+  recordIntervention,
+  recordOutcome,
+  listEvents,
+} from '../../api/client';
 import { VoiceButton } from '../../components/voice-button';
 
+const REPORTER_ID = 1; // hardcoded demo user
+
 interface Props {
-  sessionId: string;
+  patientId: string;
   patientName: string;
 }
 
-export function ChatScreen({ sessionId, patientName }: Props) {
+export function ChatScreen({ patientId, patientName }: Props) {
   const router = useRouter();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
-  const [sending, setSending] = useState(false);
-  const flatListRef = useRef<FlatList>(null);
-  const baseUrl = getBaseUrl();
+  const [text, setText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<EventReportResponse | null>(null);
+  const [error, setError] = useState('');
 
-  const handleSend = async (text?: string) => {
-    const msg = text ?? input.trim();
-    if (!msg) return;
-    setSending(true);
+  // Intervention modal
+  const [showIntervention, setShowIntervention] = useState(false);
+  const [interventionText, setInterventionText] = useState('');
+  const [interventionSaving, setInterventionSaving] = useState(false);
 
-    const userMsg: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: msg,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput('');
+  // Outcome modal
+  const [showOutcome, setShowOutcome] = useState(false);
+  const [outcomeText, setOutcomeText] = useState('');
+  const [outcomeResolved, setOutcomeResolved] = useState(false);
+  const [outcomeSaving, setOutcomeSaving] = useState(false);
 
+  // History
+  const [history, setHistory] = useState<EventOut[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const numericPatientId = parseInt(patientId, 10);
+
+  const loadHistory = async () => {
     try {
-      const res = await sendMessage(sessionId, msg);
-      const assistantMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: res.response,
-        audioUrl: res.audio_url ? `${baseUrl}${res.audio_url}` : undefined,
-        imageUrl: res.image_url || undefined,
-        monitor: res.monitor,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, assistantMsg]);
-    } catch (err: any) {
-      const errorMsg: ChatMessage = {
-        id: (Date.now() + 2).toString(),
-        role: 'assistant',
-        content: `Error: ${err.message || 'Failed to send message'}`,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMsg]);
+      const events = await listEvents(numericPatientId);
+      setHistory(events);
+    } catch {}
+  };
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const handleReport = async () => {
+    if (!text.trim()) return;
+    setSubmitting(true);
+    setError('');
+    setResult(null);
+    try {
+      const res = await reportEvent(numericPatientId, REPORTER_ID, text.trim());
+      setResult(res);
+      setText('');
+      loadHistory();
+    } catch (e: any) {
+      setError(e.message || 'Failed to report event');
     } finally {
-      setSending(false);
+      setSubmitting(false);
     }
   };
 
-  const handleEndSession = async () => {
+  const handleIntervention = async () => {
+    if (!interventionText.trim() || !result) return;
+    setInterventionSaving(true);
     try {
-      await endSession(sessionId);
+      await recordIntervention(result.event_id, interventionText.trim());
+      setShowIntervention(false);
+      setInterventionText('');
+      loadHistory();
+    } catch (e: any) {
+      setError(e.message || 'Failed to record intervention');
     } finally {
-      router.back();
+      setInterventionSaving(false);
     }
   };
 
-  const latestEmotion = messages
-    .filter((m) => m.role === 'assistant' && m.monitor)
-    .slice(-1)[0]?.monitor?.emotion;
+  const handleOutcome = async () => {
+    if (!outcomeText.trim() || !result) return;
+    setOutcomeSaving(true);
+    try {
+      await recordOutcome(result.event_id, outcomeText.trim(), outcomeResolved);
+      setShowOutcome(false);
+      setOutcomeText('');
+      setOutcomeResolved(false);
+      loadHistory();
+    } catch (e: any) {
+      setError(e.message || 'Failed to record outcome');
+    } finally {
+      setOutcomeSaving(false);
+    }
+  };
+
+  const severityColor = (s: string) => {
+    switch (s.toLowerCase()) {
+      case 'high': return colors.error;
+      case 'medium': return '#F5A623';
+      default: return colors.primary;
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -86,57 +127,222 @@ export function ChatScreen({ sessionId, patientName }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{patientName}</Text>
-        <TouchableOpacity onPress={handleEndSession}>
-          <Text style={styles.endButton}>End</Text>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text style={styles.backButton}>← Back</Text>
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>{patientName}</Text>
+        <View style={{ width: 50 }} />
       </View>
 
-      {latestEmotion && (
-        <View style={styles.emotionBar}>
-          <View
-            style={[
-              styles.emotionIndicator,
-              { backgroundColor: (colors as any)[latestEmotion] || colors.textLight },
-            ]}
-          />
-          <Text style={styles.emotionText}>{latestEmotion}</Text>
-        </View>
-      )}
-
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(m) => m.id}
-        renderItem={({ item }) => <MessageBubble message={item} baseUrl={baseUrl} />}
-        contentContainerStyle={styles.messageList}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-      />
-
-      <View style={styles.inputBar}>
-        <View style={styles.textInputWrapper}>
+      <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent}>
+        {/* Event Report Form */}
+        <Text style={styles.sectionTitle}>Report Behavioral Event</Text>
+        <View style={styles.inputWrapper}>
           <TextInput
             style={styles.textInput}
-            value={input}
-            onChangeText={setInput}
-            placeholder="Type a message..."
+            value={text}
+            onChangeText={setText}
+            placeholder="Describe the behavioral event..."
             placeholderTextColor={colors.textLight}
             multiline
-            editable={!sending}
-            onSubmitEditing={() => handleSend()}
+            editable={!submitting}
           />
-          <VoiceButton onRecordingComplete={() => {}} disabled={sending} />
+          <View style={styles.voiceButtonContainer}>
+            <VoiceButton onRecordingComplete={() => {}} disabled={submitting} />
+          </View>
         </View>
         <TouchableOpacity
-          style={[styles.sendButton, (!input.trim() || sending) && styles.sendButtonDisabled]}
-          onPress={() => handleSend()}
-          disabled={!input.trim() || sending}
+          style={[styles.reportButton, (!text.trim() || submitting) && styles.reportButtonDisabled]}
+          onPress={handleReport}
+          disabled={!text.trim() || submitting}
           activeOpacity={0.7}
         >
-          <Text style={styles.sendIcon}>➤</Text>
+          {submitting ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.reportButtonText}>Report Event</Text>
+          )}
         </TouchableOpacity>
-      </View>
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        {/* Result */}
+        {result && (
+          <View style={styles.resultCard}>
+            <Text style={styles.resultTitle}>Event Reported</Text>
+
+            <View style={styles.parsedRow}>
+              <Text style={styles.parsedLabel}>Type:</Text>
+              <Text style={styles.parsedValue}>{result.parsed.event_type}</Text>
+            </View>
+            <View style={styles.parsedRow}>
+              <Text style={styles.parsedLabel}>Severity:</Text>
+              <Text style={[styles.parsedValue, { color: severityColor(result.parsed.severity) }]}>
+                {result.parsed.severity}
+              </Text>
+            </View>
+            <View style={styles.parsedRow}>
+              <Text style={styles.parsedLabel}>Trigger:</Text>
+              <Text style={styles.parsedValue}>{result.parsed.trigger}</Text>
+            </View>
+            <View style={styles.parsedRow}>
+              <Text style={styles.parsedLabel}>Location:</Text>
+              <Text style={styles.parsedValue}>{result.parsed.location}</Text>
+            </View>
+            <View style={styles.parsedRow}>
+              <Text style={styles.parsedLabel}>Summary:</Text>
+              <Text style={styles.parsedValue}>{result.parsed.summary}</Text>
+            </View>
+
+            {result.protocols.length > 0 && (
+              <>
+                <Text style={styles.protocolTitle}>Protocol Suggestions</Text>
+                {result.protocols.map((p, i) => (
+                  <View key={i} style={styles.protocolCard}>
+                    <Text style={styles.protocolText}>{p.text}</Text>
+                    <Text style={styles.protocolSource}>
+                      {p.title} · p.{p.page} · {p.filename}
+                    </Text>
+                  </View>
+                ))}
+              </>
+            )}
+
+            {/* Action buttons */}
+            <View style={styles.actionRow}>
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={() => setShowIntervention(true)}
+              >
+                <Text style={styles.actionButtonText}>Record Intervention</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionButton, styles.actionButtonSecondary]}
+                onPress={() => setShowOutcome(true)}
+              >
+                <Text style={[styles.actionButtonText, styles.actionButtonTextSecondary]}>
+                  Record Outcome
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* History */}
+        <TouchableOpacity
+          style={styles.historyToggle}
+          onPress={() => setShowHistory(!showHistory)}
+        >
+          <Text style={styles.historyToggleText}>
+            {showHistory ? '▼' : '▶'} Event History ({history.length})
+          </Text>
+        </TouchableOpacity>
+
+        {showHistory && history.map((evt) => (
+          <View key={evt.id} style={styles.historyCard}>
+            <View style={styles.historyHeader}>
+              <Text style={styles.historyType}>{evt.event_type}</Text>
+              <Text style={[styles.historySeverity, { color: severityColor(evt.severity) }]}>
+                {evt.severity}
+              </Text>
+            </View>
+            <Text style={styles.historyDesc} numberOfLines={2}>{evt.description}</Text>
+            {evt.intervention_description && (
+              <Text style={styles.historyMeta}>
+                ✅ Intervention: {evt.intervention_description}
+              </Text>
+            )}
+            {evt.resolved && <Text style={styles.historyResolved}>Resolved</Text>}
+            {evt.created_at && (
+              <Text style={styles.historyDate}>
+                {new Date(evt.created_at).toLocaleDateString()}
+              </Text>
+            )}
+          </View>
+        ))}
+      </ScrollView>
+
+      {/* Intervention Modal */}
+      <Modal visible={showIntervention} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Record Intervention</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={interventionText}
+              onChangeText={setInterventionText}
+              placeholder="Describe the intervention taken..."
+              placeholderTextColor={colors.textLight}
+              multiline
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setShowIntervention(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSave, interventionSaving && styles.reportButtonDisabled]}
+                onPress={handleIntervention}
+                disabled={interventionSaving}
+              >
+                {interventionSaving ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <Text style={styles.modalSaveText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Outcome Modal */}
+      <Modal visible={showOutcome} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Record Outcome</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={outcomeText}
+              onChangeText={setOutcomeText}
+              placeholder="Describe the outcome..."
+              placeholderTextColor={colors.textLight}
+              multiline
+            />
+            <View style={styles.resolvedRow}>
+              <Text style={styles.resolvedLabel}>Resolved?</Text>
+              <Switch
+                value={outcomeResolved}
+                onValueChange={setOutcomeResolved}
+                trackColor={{ true: colors.primary, false: colors.border }}
+              />
+            </View>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.modalCancel}
+                onPress={() => setShowOutcome(false)}
+              >
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSave, outcomeSaving && styles.reportButtonDisabled]}
+                onPress={handleOutcome}
+                disabled={outcomeSaving}
+              >
+                {outcomeSaving ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <Text style={styles.modalSaveText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -149,30 +355,108 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   headerTitle: { fontSize: 18, fontWeight: '600', color: colors.text },
-  endButton: { color: colors.error, fontSize: 16, fontWeight: '600' },
-  emotionBar: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8,
-    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border,
+  backButton: { color: colors.primary, fontSize: 16, fontWeight: '600' },
+  body: { flex: 1 },
+  bodyContent: { padding: 16, paddingBottom: 40 },
+  sectionTitle: {
+    fontSize: 20, fontWeight: '600', color: colors.text, marginBottom: 12,
   },
-  emotionIndicator: { width: 12, height: 12, borderRadius: 6, marginRight: 8 },
-  emotionText: { fontSize: 14, color: colors.textSecondary, textTransform: 'capitalize' },
-  messageList: { paddingVertical: 12 },
-  inputBar: {
-    flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingVertical: 10,
-    backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border, gap: 8,
-  },
-  textInputWrapper: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card,
-    borderRadius: 24, paddingRight: 6,
+  inputWrapper: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    backgroundColor: colors.card, borderRadius: 16, borderWidth: 1,
+    borderColor: colors.border, paddingRight: 6,
   },
   textInput: {
-    flex: 1, minHeight: 48, maxHeight: 120,
-    paddingHorizontal: 18, paddingVertical: 12, fontSize: 17, color: colors.text,
+    flex: 1, minHeight: 100, maxHeight: 200,
+    paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, color: colors.text,
+    textAlignVertical: 'top',
   },
-  sendButton: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primary,
-    justifyContent: 'center', alignItems: 'center',
+  voiceButtonContainer: {
+    paddingTop: 12,
   },
-  sendButtonDisabled: { opacity: 0.4 },
-  sendIcon: { color: '#FFF', fontSize: 20 },
+  reportButton: {
+    backgroundColor: colors.primary, paddingVertical: 16,
+    borderRadius: 16, alignItems: 'center', marginTop: 12, elevation: 3,
+    shadowColor: colors.primaryDark, shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3, shadowRadius: 6,
+  },
+  reportButtonDisabled: { opacity: 0.4 },
+  reportButtonText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  error: { color: colors.error, fontSize: 14, marginTop: 8 },
+
+  // Result card
+  resultCard: {
+    backgroundColor: colors.surface, borderRadius: 16, padding: 16, marginTop: 20,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  resultTitle: { fontSize: 18, fontWeight: '700', color: colors.primary, marginBottom: 12 },
+  parsedRow: { flexDirection: 'row', marginBottom: 6 },
+  parsedLabel: { fontSize: 14, fontWeight: '600', color: colors.textSecondary, width: 80 },
+  parsedValue: { fontSize: 14, color: colors.text, flex: 1 },
+
+  protocolTitle: {
+    fontSize: 16, fontWeight: '600', color: colors.text, marginTop: 16, marginBottom: 8,
+  },
+  protocolCard: {
+    backgroundColor: colors.card, borderRadius: 12, padding: 12, marginBottom: 8,
+  },
+  protocolText: { fontSize: 14, color: colors.text, lineHeight: 20 },
+  protocolSource: { fontSize: 12, color: colors.textSecondary, marginTop: 4 },
+
+  actionRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  actionButton: {
+    flex: 1, backgroundColor: colors.primary, paddingVertical: 12,
+    borderRadius: 12, alignItems: 'center',
+  },
+  actionButtonSecondary: {
+    backgroundColor: 'transparent', borderWidth: 2, borderColor: colors.primary,
+  },
+  actionButtonText: { color: '#FFF', fontSize: 14, fontWeight: '600' },
+  actionButtonTextSecondary: { color: colors.primary },
+
+  // History
+  historyToggle: { marginTop: 24, paddingVertical: 8 },
+  historyToggleText: { fontSize: 16, fontWeight: '600', color: colors.primary },
+  historyCard: {
+    backgroundColor: colors.surface, borderRadius: 12, padding: 12, marginTop: 8,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  historyHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  historyType: { fontSize: 14, fontWeight: '600', color: colors.text },
+  historySeverity: { fontSize: 13, fontWeight: '600' },
+  historyDesc: { fontSize: 13, color: colors.textSecondary, marginBottom: 4 },
+  historyMeta: { fontSize: 12, color: colors.primary },
+  historyResolved: { fontSize: 12, color: colors.primary, fontWeight: '600', marginTop: 2 },
+  historyDate: { fontSize: 11, color: colors.textLight, marginTop: 4 },
+
+  // Modals
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center', padding: 24,
+  },
+  modalContent: {
+    backgroundColor: colors.surface, borderRadius: 20, padding: 24,
+  },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: colors.text, marginBottom: 16 },
+  modalInput: {
+    backgroundColor: colors.card, borderRadius: 12, padding: 12,
+    fontSize: 15, color: colors.text, minHeight: 80, textAlignVertical: 'top',
+    borderWidth: 1, borderColor: colors.border,
+  },
+  resolvedRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginTop: 12,
+  },
+  resolvedLabel: { fontSize: 15, color: colors.text },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  modalCancel: {
+    flex: 1, paddingVertical: 12, borderRadius: 12,
+    alignItems: 'center', backgroundColor: colors.card,
+  },
+  modalCancelText: { fontSize: 15, color: colors.textSecondary, fontWeight: '600' },
+  modalSave: {
+    flex: 1, paddingVertical: 12, borderRadius: 12,
+    alignItems: 'center', backgroundColor: colors.primary,
+  },
+  modalSaveText: { color: '#FFF', fontSize: 15, fontWeight: '600' },
 });
