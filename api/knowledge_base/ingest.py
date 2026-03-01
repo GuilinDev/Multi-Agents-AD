@@ -9,12 +9,11 @@ import os
 import sys
 import fitz  # PyMuPDF
 import chromadb
-from chromadb.utils import embedding_functions
+from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
 
 PDF_DIR = os.path.join(os.path.dirname(__file__), "pdfs")
 CHROMA_DIR = os.path.join(os.path.dirname(__file__), "chroma_db")
 COLLECTION_NAME = "dementia_care_guidelines"
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"  # Fast, 384-dim, good for retrieval
 CHUNK_SIZE = 500  # ~500 tokens ≈ ~2000 chars
 CHUNK_OVERLAP = 50  # ~50 tokens ≈ ~200 chars
 CHARS_PER_CHUNK = 800
@@ -145,9 +144,7 @@ def main():
 
     # Initialize ChromaDB
     client = chromadb.PersistentClient(path=CHROMA_DIR)
-    ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name=EMBEDDING_MODEL
-    )
+    ef = DefaultEmbeddingFunction()
 
     # Delete existing collection if exists (fresh ingest)
     try:
@@ -161,7 +158,7 @@ def main():
         embedding_function=ef,
         metadata={"hnsw:space": "cosine"},
     )
-    print(f"Created collection '{COLLECTION_NAME}' with {EMBEDDING_MODEL} embeddings")
+    print(f"Created collection '{COLLECTION_NAME}' with default embeddings")
     print()
 
     # Process each PDF

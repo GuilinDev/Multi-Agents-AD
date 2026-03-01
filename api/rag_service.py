@@ -5,11 +5,10 @@ Only retrieves, never generates care advice. Zero hallucination by design.
 
 import os
 import chromadb
-from chromadb.utils import embedding_functions
+from chromadb.utils.embedding_functions import DefaultEmbeddingFunction
 
 CHROMA_DIR = os.path.join(os.path.dirname(__file__), "knowledge_base", "chroma_db")
 COLLECTION_NAME = "dementia_care_guidelines"
-EMBEDDING_MODEL = "all-MiniLM-L6-v2"
 
 _client = None
 _collection = None
@@ -19,9 +18,7 @@ def _get_collection():
     global _client, _collection
     if _collection is None:
         _client = chromadb.PersistentClient(path=CHROMA_DIR)
-        ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=EMBEDDING_MODEL
-        )
+        ef = DefaultEmbeddingFunction()
         _collection = _client.get_collection(
             name=COLLECTION_NAME,
             embedding_function=ef,
