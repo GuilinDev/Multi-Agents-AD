@@ -1,54 +1,101 @@
-# 🧠 Multi-Agent Alzheimer's Companion (Demo)
+# 🧠 Memowell.ai
 
-A dual-agent AI system for reminiscence therapy with early-stage Alzheimer's patients.
+**Text-first AI Copilot for Dementia Behavioral Events**
+
+Memowell.ai helps caregivers in nursing facilities document behavioral events, retrieve evidence-based care protocols, and generate structured shift handoff reports — all with zero hallucination by design.
+
+## What It Does
+
+```
+Caregiver describes behavioral event (text or voice)
+        ↓
+LLM parses → event type, severity, trigger, location
+        ↓
+RAG retrieves → matched protocols from CMS/APA/NICE/Alzheimer's Association
+        ↓
+LLM summarizes → 2-3 actionable steps with source citations
+        ↓
+Caregiver records intervention → outcome → auto-generates C→I→O log
+        ↓
+Shift handoff report with signature
+```
 
 ## Architecture
 
 ```
-Patient (User) ←→ TherapyAgent (Gemini) ←→ Conversation
-                         ↓
-                   MonitorAgent (Gemini) → Real-time cognitive assessment
-                         ↓
-                   Caregiver Summary Report
+┌─────────────────────────────────────────────┐
+│  Frontend (Expo + Next.js + Solito)         │
+│  Three platforms: PWA / Android / iOS       │
+└──────────────────┬──────────────────────────┘
+                   │ REST API
+┌──────────────────▼──────────────────────────┐
+│  FastAPI Backend                             │
+│  ├─ Event Router    (report → intervene → outcome)
+│  ├─ Handoff Router  (generate → acknowledge)
+│  ├─ Patient Router  (CRUD)
+│  ├─ RAG Router      (search → summarize)
+│  └─ LLM Service     (Groq: Whisper STT + Llama 3.3 70B)
+├──────────────────────────────────────────────┤
+│  SQLite (events, patients, handoffs, staff)  │
+│  ChromaDB (5951 chunks, 8 guideline PDFs)    │
+└──────────────────────────────────────────────┘
 ```
 
-- **TherapyAgent**: Conducts warm, personalized reminiscence therapy conversations
-- **MonitorAgent**: Silently analyzes each exchange for emotion, engagement, memory quality, and risk flags
-- **TTS Engine**: Natural voice output via edge-tts
-- **Caregiver Dashboard**: Real-time monitoring + end-of-session summary
+## Key Design Decisions
+
+- **RAG, not generation** — Protocol suggestions come from retrieval only. Zero tolerance for hallucination in medical compliance context.
+- **Text-first, voice-optional** — Privacy concerns in nursing facilities make text input the primary modality.
+- **C→I→O structured data** — Every behavioral event captures Context → Intervention → Outcome, building a structured dataset for future analytics.
+- **Handwritten signature** — Shift handoffs require legal-compliant signature capture.
+
+## Knowledge Base
+
+| Source | Documents | Chunks |
+|--------|-----------|--------|
+| CMS (Centers for Medicare & Medicaid) | Appendix PP, GUIDE Model, F-Tags | ~3,500 |
+| Alzheimer's Association | Care Practice, Assisted Living, Clinical 2024 | ~1,200 |
+| APA | Dementia Evaluation Guidelines | ~200 |
+| NICE | NG97 Dementia Management | ~100 |
+| **Total** | **8 PDFs** | **5,951 chunks** |
 
 ## Quick Start
 
 ```bash
-python -m venv venv
-source venv/bin/activate
+# Backend
+cd api
 pip install -r requirements.txt
+echo "GROQ_API_KEY=your_key" > ../.env
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
 
-# Set your API key
-cp .env.example .env
-# Edit .env with your GEMINI_API_KEY
-
-python app.py
-# Open http://localhost:7860
+# Frontend (PWA)
+cd apps/next
+npm install
+npm run dev
+# Open http://localhost:3000
 ```
 
 ## Tech Stack
 
-- **LLM**: Google Gemini 2.0 Flash (primary), Groq/Llama (failover)
-- **UI**: Gradio 6
-- **TTS**: edge-tts (Microsoft, free)
-- **Framework**: Custom dual-agent with shared conversation state
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Expo + Solito + Next.js (PWA/Android/iOS) |
+| Backend | FastAPI + SQLAlchemy |
+| Database | SQLite (structured) + ChromaDB (vector) |
+| LLM | Groq — Whisper Large v3 (STT) + Llama 3.3 70B (parsing/summarization) |
+| Embeddings | all-MiniLM-L6-v2 (384-dim, cosine) |
+| Deployment | Railway (API) + Vercel (PWA) |
 
-## Synthetic Patient
+## Product Roadmap
 
-Demo uses a synthetic patient profile (Margaret Thompson, 78, early-stage AD). 
-No real patient data is used.
+- **Phase 1 (Current)**: Behavioral event copilot + auto-handoff (SaaS, $5-15/bed/month)
+- **Phase 2**: Structured C→I→O data asset across multiple facilities
+- **Phase 3**: Intervention ranking, risk prediction, digital twin
 
 ## Team
 
-- **Guilin Zhang** — AI Systems Architecture, Agentic Framework
-- **Kai [TBD]** — Project Management, Industry Connections
-- **Dr. Dezhi Wu** — Domain Expertise, HCI, Clinical Validation (USC)
+- **Guilin Zhang** — AI Systems Architecture, Full-Stack Engineering
+- **Kai Zhao** — Product Strategy, Industry Partnerships
+- **Dr. Dezhi Wu** — Domain Expertise, HCI × AI in Healthcare (USC)
 
 ## License
 
