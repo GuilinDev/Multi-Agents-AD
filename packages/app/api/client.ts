@@ -10,10 +10,12 @@ import type {
 
 function getDefaultBaseUrl(): string {
   if (Platform.OS === 'web') {
-    // Use env var if set (Railway deployment), otherwise same-origin (local dev with proxy)
-    if (typeof process !== 'undefined' && (process.env as any).NEXT_PUBLIC_API_URL) {
-      return (process.env as any).NEXT_PUBLIC_API_URL;
-    }
+    // Check for build-time env var (Railway/Vercel deployment)
+    const envUrl = typeof process !== 'undefined'
+      ? (process.env as any).NEXT_PUBLIC_API_URL
+      : undefined;
+    if (envUrl) return envUrl;
+    // Local dev: same-origin with Next.js rewrites proxy
     return '';
   }
   if (Platform.OS === 'android') return 'http://10.0.2.2:8000';

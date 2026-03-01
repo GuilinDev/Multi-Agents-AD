@@ -12,7 +12,11 @@ COPY apps/next/ apps/next/
 # Install all deps
 RUN npm ci
 
-# Build Next.js
+# Build-time env var for API URL
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+# Build Next.js (inlines NEXT_PUBLIC_ vars)
 RUN cd apps/next && npm run build
 
 EXPOSE 3000
