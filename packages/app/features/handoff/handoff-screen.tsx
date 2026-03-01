@@ -35,6 +35,7 @@ export function HandoffScreen() {
 
   const handleConfirmSignature = (data: string) => {
     setSignatureData(data);
+    Alert.alert('Signature Confirmed', 'You can now submit the handoff.');
   };
 
   const handleSubmitHandoff = async () => {
@@ -139,7 +140,7 @@ export function HandoffScreen() {
               onPress={handleSubmitHandoff}
               disabled={!signatureData || submitting}
             >
-              <Text style={styles.submitText}>{submitting ? 'Submitting...' : '确认交接'}</Text>
+              <Text style={styles.submitText}>{submitting ? 'Submitting...' : 'Submit Handoff'}</Text>
             </TouchableOpacity>
           </>
         )}

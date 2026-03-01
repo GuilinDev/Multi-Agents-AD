@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, PanResponder, GestureResponderEvent } from 'react-native';
 import { colors } from '../theme/colors';
 
@@ -13,8 +13,9 @@ interface Props {
 
 export function SignaturePad({ onConfirm }: Props) {
   const [paths, setPaths] = useState<Point[][]>([]);
-  const currentPath = useRef<Point[]>([]);
-  const [, forceUpdate] = useState(0);
+  const currentPathRef = useRef<Point[]>([]);
+  const [activePath, setActivePath] = useState<Point[]>([]);
+  const hasSignature = paths.length > 0;
 
   const getPoint = (e: GestureResponderEvent): Point => ({
     x: e.nativeEvent.locationX,
@@ -26,69 +27,72 @@ export function SignaturePad({ onConfirm }: Props) {
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (e) => {
-        currentPath.current = [getPoint(e)];
+        const pt = getPoint(e);
+        currentPathRef.current = [pt];
+        setActivePath([pt]);
       },
       onPanResponderMove: (e) => {
-        currentPath.current.push(getPoint(e));
-        forceUpdate((n) => n + 1);
+        const pt = getPoint(e);
+        currentPathRef.current.push(pt);
+        setActivePath([...currentPathRef.current]);
       },
       onPanResponderRelease: () => {
-        if (currentPath.current.length > 0) {
-          setPaths((prev) => [...prev, currentPath.current]);
-          currentPath.current = [];
+        if (currentPathRef.current.length > 1) {
+          setPaths((prev) => [...prev, [...currentPathRef.current]]);
         }
+        currentPathRef.current = [];
+        setActivePath([]);
       },
     })
   ).current;
 
-  const allPaths = [...paths, ...(currentPath.current.length > 0 ? [currentPath.current] : [])];
+  const allPaths = [...paths, ...(activePath.length > 0 ? [activePath] : [])];
 
-  const toSvgPath = (points: Point[]): string => {
-    if (points.length === 0) return '';
-    return points
-      .map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`)
-      .join(' ');
+  const renderLine = (prev: Point, point: Point, key: string) => {
+    const dx = point.x - prev.x;
+    const dy = point.y - prev.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 0.5) return null;
+    const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+    return (
+      <View
+        key={key}
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          left: prev.x,
+          top: prev.y - 1,
+          width: len,
+          height: 2.5,
+          backgroundColor: '#000',
+          transform: [{ rotate: `${angle}deg` }],
+          transformOrigin: 'left center',
+        }}
+      />
+    );
   };
 
   const handleClear = () => {
     setPaths([]);
-    currentPath.current = [];
-    forceUpdate((n) => n + 1);
+    currentPathRef.current = [];
+    setActivePath([]);
   };
 
   const handleConfirm = () => {
-    const data = JSON.stringify(paths.map((p) => p.map(({ x, y }) => [Math.round(x), Math.round(y)])));
+    if (!hasSignature) return;
+    const data = JSON.stringify(
+      paths.map((p) => p.map(({ x, y }) => [Math.round(x), Math.round(y)]))
+    );
     onConfirm(data);
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.canvas} {...panResponder.panHandlers}>
-        {/* SVG-like rendering using absolute-positioned Views for each segment */}
         {allPaths.map((path, pi) =>
           path.map((point, i) => {
             if (i === 0) return null;
-            const prev = path[i - 1]!;
-            const dx = point.x - prev.x;
-            const dy = point.y - prev.y;
-            const len = Math.sqrt(dx * dx + dy * dy);
-            const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-            return (
-              <View
-                key={`${pi}-${i}`}
-                pointerEvents="none"
-                style={{
-                  position: 'absolute',
-                  left: prev.x,
-                  top: prev.y - 1,
-                  width: len,
-                  height: 2,
-                  backgroundColor: '#000',
-                  transform: [{ rotate: `${angle}deg` }],
-                  transformOrigin: 'left center',
-                }}
-              />
-            );
+            return renderLine(path[i - 1]!, point, `${pi}-${i}`);
           })
         )}
         {allPaths.length === 0 && (
@@ -100,11 +104,11 @@ export function SignaturePad({ onConfirm }: Props) {
           <Text style={styles.clearText}>Clear</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.confirmButton, paths.length === 0 && styles.buttonDisabled]}
+          style={[styles.confirmButton, !hasSignature && styles.buttonDisabled]}
           onPress={handleConfirm}
-          disabled={paths.length === 0}
+          disabled={!hasSignature}
         >
-          <Text style={styles.confirmText}>Confirm</Text>
+          <Text style={styles.confirmText}>Confirm Signature</Text>
         </TouchableOpacity>
       </View>
     </View>
