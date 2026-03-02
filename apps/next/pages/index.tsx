@@ -1,5 +1,5 @@
-import { HomeScreen } from '@memowell/app';
+import { ChatAppScreen } from '@memowell/app';
 
 export default function HomePage() {
-  return <HomeScreen />;
+  return <ChatAppScreen />;
 }

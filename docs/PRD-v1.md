@@ -1,10 +1,10 @@
 # Memowell V1 — Product Requirements Document
 
-**产品定位**: Voice-first Copilot for Dementia Behavioral Events
+**产品定位**: Text-first Copilot for Dementia Behavioral Events (语音辅助)
 **目标用户**: 一线护工（CNA/nursing aide）、护士、护理机构管理者
 **产品形态**: 三端统一 — Expo + Solito + Next.js monorepo，共享FastAPI后端。PWA (Next.js+Serwist) + Android + iOS 一套代码
 **版本**: V1 MVP
-**最后更新**: 2026-02-28
+**最后更新**: 2026-03-01
 
 ---
 
@@ -301,48 +301,112 @@ EventLog (Context → Intervention → Outcome)
 
 ## 6. UI/UX 设计原则
 
-### 6.1 设计约束
+### 6.1 核心理念：AI-Native，不是SaaS
 
-- **手常被占用** → 语音优先，单手操作
+> **结构化数据在后台，对话体验在前台。**
+> 护工感觉在跟AI聊天，系统静默完成：事件分类、Protocol检索、C→I→O闭环、交接班数据。
+> 绝不让护工产生"又要填表"的感觉，而是"这个挺好玩试试"的感觉。
+
+**设计对标**: ChatGPT — 干净、白底、对话流、零学习成本
+
+### 6.2 设计约束
+
+- **手常被占用** → 语音+文字双向，单手操作
 - **噪杂环境** → 大字体、高对比度、清晰视觉层级
 - **英语可能非母语** → 简单词汇、图标辅助、未来多语言
 - **紧急场景** → 最少点击到达关键信息（<3 taps）
-- **iPad横屏为主** → 信息密度可以更高
+- **护工已经被EHR/ERP折腾够了** → 不做表单，不做Dashboard，一切通过对话完成
 
-### 6.2 页面结构
+### 6.3 页面结构：Chat-First（无底部Tab）
 
 ```
-┌──────────────────────────────────────┐
-│  Tab Bar (Bottom)                    │
-│                                      │
-│  🚨 Events  │  🔄 Handoff  │  👥 Patients  │  ⚙️ Settings
-└──────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│ ☰ [Margaret Thompson ▾]    🔴2 ⚠️1     │  ← 顶部栏：左上角切换病人，右侧risk flags
+├─────────────────────────────────────────┤
+│                                         │
+│  ┌─ 系统消息（灰色，小字）──────────┐   │
+│  │ 📋 Today: 2 events, 1 pending   │   │
+│  │ ⚠️ Last: Agitation at 14:20     │   │
+│  └──────────────────────────────────┘   │
+│                                         │
+│  👤 "王阿姨7点拒吃药"                    │  ← 用户输入（语音/文字）
+│                                         │
+│  🤖 ┌─ 事件摘要条 ──────────────────┐   │
+│     │ Medication Refusal · Med · 19:00│  │  ← 自动解析，灰色小摘要
+│     └────────────────────────────────┘   │
+│                                         │
+│  🤖 ┌─ Protocol卡片 ────────────────┐   │
+│     │ 📋 Recommended Steps          │   │
+│     │ 1. Assess for pain/discomfort │   │
+│     │ 2. Offer alternative timing   │   │
+│     │ 3. Try with preferred food    │   │
+│     │ 📎 CMS F-Tag 604, APA §4.2   │   │
+│     └────────────────────────────────┘   │
+│                                         │
+│  🤖 ┌─ 快捷操作 ────────────────────┐   │
+│     │ [✅ Confirm & Log]            │   │  ← 一键确认=写入事件日志+交接板
+│     │ [🚨 Escalate]                 │   │  ← 通知DON/护士
+│     │ [➕ Add Detail]               │   │  ← AI追问trigger/环境
+│     └────────────────────────────────┘   │
+│                                         │
+├─────────────────────────────────────────┤
+│ [🎤] [  Type a message...          ] ➤ │  ← 底部输入栏（文字+语音）
+└─────────────────────────────────────────┘
 ```
 
-**🚨 Events (主页/默认Tab)**
-- 顶部：当前班次 + 大号"Report Event"按钮（红色，醒目）
-- 中间：今日事件流（时间线视图）
-- 每个事件卡片：患者名 + 事件类型icon + 严重度色条 + 状态（Open/Resolved）
-- 点击事件 → 详情页（protocol步骤、干预记录、结果）
+### 6.4 交互流程
 
-**Report Event 流程 (全屏模态)**
-1. 大号🎤按钮 — 按住说话（或手动输入）
-2. 系统解析后显示：患者(可修改) + 事件类型(可修改) + 严重度
-3. 显示Protocol推荐步骤（带来源）
-4. 底部："开始干预"按钮
-5. 干预后：再次语音记录结果
-6. 完成 → 事件自动进入交接板
+**核心循环：输入 → 3条推荐 → 一键确认**
 
-**🔄 Handoff**
-- 顶部：当前班次 → 下一班次 的交接标题
-- 患者列表：按状态排序（🚨红 > ⚠️黄 > ✅绿）
-- 每个患者：事件数 + 关键信息摘要
-- 底部："Acknowledge Handoff"签收按钮
-- 可切换查看历史交接
+```
+护工说/打："王阿姨7点拒吃药"
+    ↓
+AI回复：
+  ① 灰色摘要条 [Medication Refusal · Medium · 19:00]
+  ② Protocol卡片（3条推荐步骤 + 来源引用）
+  ③ 三个按钮：[✅ Confirm & Log] [🚨 Escalate] [➕ Add Detail]
+    ↓
+├─ 点 Confirm → 事件+干预自动写入日志和交接板，聊天流里出现"✅ Logged"
+├─ 点 Escalate → 通知推送给DON/护士，聊天流里出现"🚨 Escalated to Nurse"
+└─ 点 Add Detail → AI追问："What triggered this? Environment?"
+    ↓ 护工补充 → 更新事件记录 → 再次3条推荐
+```
 
-**👥 Patients**
-- 患者网格/列表
-- 点击 → 患者详情（事件时间线、趋势、用药、notes）
+**交接班 = 聊天流的自动摘要**
+- 班次结束时，AI自动在聊天流中生成交接摘要卡片
+- 或手动输入"generate handoff" → 生成本班次所有事件汇总
+- 接班护工点 [✅ Acknowledge] 签收
+- 不需要单独的Handoff页面
+
+**病人切换（左上角 Drawer）**
+- 点击左上角 → 侧边栏滑出
+- 病人列表：按风险排序（🔴高风险在上）
+- 显示：姓名 + 房间号 + 今日事件数 + 最后事件时间
+- 切换病人 = 切换聊天上下文（像ChatGPT切换对话）
+- 历史事件作为聊天消息流，往上滑动查看
+
+### 6.5 消息类型
+
+聊天流里混合五种消息：
+
+| 类型 | 样式 | 触发 |
+|------|------|------|
+| **用户输入** | 右侧气泡（蓝色） | 护工语音/文字 |
+| **事件摘要** | 灰色小条，居中 | 系统自动解析事件后 |
+| **Protocol卡片** | 白色卡片+阴影 | 事件匹配到指南后 |
+| **快捷操作按钮** | 横排按钮组 | 每次AI回复后 |
+| **系统通知** | 灰色小字，居中 | ✅ Logged / 🚨 Escalated / 🔄 Handoff |
+
+### 6.6 关键设计决策
+
+| 决策 | 理由 |
+|------|------|
+| **无底部Tab** | Tab是SaaS思维，Chat-first不需要导航 |
+| **无Dashboard** | 趋势/统计通过对话查询（"show me this week's summary"） |
+| **无表单** | 所有输入通过自然语言，系统自动结构化 |
+| **一键确认，不要求编辑** | 减少摩擦，护工不想修改AI解析的结果 |
+| **3条推荐，不给长文** | 护工不看长文，3条足够，需要更多可追问 |
+| **历史=聊天记录** | 往上滑就是历史，不需要单独的timeline页面 |
 
 ---
 
@@ -376,10 +440,11 @@ EventLog (Context → Intervention → Outcome)
 ### 7.2 MVP不做的
 
 - ❌ 复杂用户权限系统（V1用简单角色区分）
-- ❌ EHR集成（V2）
+- ❌ EHR双向集成（V2，但V1提供CSV导入/导出）
 - ❌ 多机构支持（V1单机构）
 - ❌ 患者陪伴聊天（保留代码，不进V1主流程）
 - ❌ 合规报告生成（V1.1）
+- ❌ UI美化（Wu: 先做AI feature，UI后调）
 
 ### 7.3 成功指标
 
@@ -430,16 +495,87 @@ Phase 1的Copilot = 数据入口
 
 ---
 
-## 10. 开放问题
+## 10. 数据导入/集成策略 (03/01 Wu反馈)
+
+> Wu核心观点：如果换平台太麻烦，护理机构和医院都不会考虑新AI产品。入门成本高=没人用。竞争者可能比我们引入客户的方式更简单方便。
+
+### 10.1 Onboarding Friction = 生死问题
+
+养老机构病人流动性低（Wu/Kai确认），意味着：
+- ✅ 一旦onboard，数据持续积累，switching cost高，retention天然好
+- ❌ 但如果初始导入太痛苦，机构根本不会尝试
+
+### 10.2 V1 MVP 数据导入方案
+
+**P0 — Must Have (V1):**
+
+| 功能 | 描述 |
+|------|------|
+| CSV/Excel批量导入 | 上传病人名单（姓名、房间号、诊断、认知水平），一键建档 |
+| 手动新建患者 | 没有电子记录的患者可以直接在App里新建 |
+| 护工批量导入 | CSV上传护工名单（姓名、角色、班次） |
+
+**P1 — Should Have (V1.1):**
+
+| 功能 | 描述 |
+|------|------|
+| 数据导出 | 事件日志、交接记录导出为CSV/PDF，方便给CMS检查或迁移 |
+| 模板下载 | 提供标准Excel模板，机构填好直接上传 |
+
+**P2 — V2 EHR集成:**
+
+| 功能 | 描述 |
+|------|------|
+| HL7 FHIR API | 与主流养老院EHR系统对接（PointClickCare, MatrixCare, Yardi） |
+| 双向同步 | 患者数据从EHR拉取，事件记录推回EHR |
+| SSO/LDAP | 机构统一账号登录 |
+
+### 10.3 Voice ↔ Text 双向 (Wu反馈)
+
+V1已实现Text-first + 语音辅助。需增强：
+- **Text → Voice**: Protocol推荐步骤可以语音播报（Edge-TTS），护工手忙时听着做
+- **Voice → Text**: 已有Whisper STT
+- 两个方向自由切换，适配不同场景（安静办公室用文字，忙碌现场用语音）
+
+### 10.4 Automatic Summarization 作为核心卖点 (Wu/Kai共识)
+
+LLM功能不是附加feature，是核心卖点。V1需要突出展示：
+- ✅ 事件自动摘要（已有：LLM post-processing raw events → structured summary）
+- ✅ 交接报告自动生成（已有：shift handoff auto-generation）
+- 🔲 班次趋势摘要（"本周agitation事件比上周增加30%，主要集中在14:00-16:00"）
+- 🔲 患者行为模式识别（"Mrs. Thompson的sundowning与午餐后服药时间相关"）
+
+**Demo展示策略**: 打开App → 第一屏就看到AI生成的摘要和洞察，不是传统的手动输入表单
+
+---
+
+## 11. 外部资源与合作 (03/01更新)
+
+### 11.1 Wu的学术网络
+- Wu分享了Alzheimer's Association官方资源
+- Wu有一位**护理学院同事**（Dementia非其专长，但可辅助护理流程验证）
+- Wu计划实地考察nursing home对比内部protocol标准
+
+### 11.2 Alzheimer's Association
+- 官方指南可补充RAG知识库
+- 潜在合作/背书渠道
+- StartUp Health Alzheimer's Moonshot项目
+
+---
+
+## 12. 开放问题
 
 1. **数据存储**: 护理数据需要HIPAA合规，V1阶段怎么处理？建议先用de-identification + 机构自托管
 2. **离线支持**: Nursing home WiFi不一定稳定，语音录制需要离线缓存，联网后同步
 3. **iPad vs 手机**: Pilot时用哪种设备？建议先iPad（护士站常备），手机作为辅助
 4. **Protocol更新**: CMS指南会更新，RAG知识库需要版本管理
 5. **多语言优先级**: 西班牙语应该是第一个加的（大量Hispanic护工）
+6. **数据迁移摩擦** (03/01 Wu): 如何让初始onboarding足够简单？CSV模板+一键导入是底线，长期需EHR集成
+7. **现有交接方式竞争** (03/01 Wu): WhatsApp+白板是现有baseline，我们需要比这更简单而不是更复杂
+8. **Cross-platform UI** (03/01 Wu): 不同设备屏幕适配，当前表格空位太多需优化（但Wu也说先做AI feature，UI后调）
 
 ---
 
-*Document version: 1.0*
+*Document version: 1.1*
 *Authors: Guilin Zhang, 参谋 (AI Copilot)*
 *Stakeholders: Dr. Dezhi Wu (USC), Kai Zhao*
