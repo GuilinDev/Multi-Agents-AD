@@ -300,15 +300,16 @@ export function ChatAppScreen() {
       const summary = (p?.summary || '').toLowerCase();
 
       // Detect positive/routine reports
+      const combinedText = (summary + ' ' + text).toLowerCase();
       const isPositive = (eventType === 'other' && severity === 'low') &&
-        (/doing (well|good|great|fine)|no (issue|concern|incident|notable)|stable|uneventful|routine|all good|normal/i
-          .test(summary + ' ' + text));
+        (/doing (well|good|great|fine|ok|okay)|feeling (good|great|fine|well|better)|no (issue|concern|incident|notable|problem)|stable|uneventful|routine|all good|everything.*(fine|ok|good)|normal day/i
+          .test(combinedText));
 
-      // Detect unclear/nonsensical input — only if LLM also couldn't parse anything meaningful
-      const hasMeaningSummary = summary && !summary.includes('no event description') && !summary.includes('unclear');
-      const hasSymptom = /(dizz|pain|fever|nausea|vomit|agitat|wander|refus|fall|confus|aggress|sundow|sleep|cry|yell|scream|hit|kick|anxious|restless|upset)/i.test(text + ' ' + summary);
+      // Detect unclear input — trust the LLM parse result.
+      // Only "unclear" if the LLM itself says it couldn't understand.
+      const llmCouldNotParse = /no event description|unclear|not enough information|cannot determine|no specific event/i.test(summary);
       const isUnclear = eventType === 'other' && severity === 'low' &&
-        !isPositive && !hasSymptom && !hasMeaningSummary;
+        !isPositive && llmCouldNotParse;
 
       if (isPositive) {
         // Friendly acknowledgment, no action buttons
