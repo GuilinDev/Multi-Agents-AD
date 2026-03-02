@@ -292,45 +292,72 @@ export function ChatAppScreen() {
 
     try {
       const result: EventReportResponse = await reportEvent(Number(selectedPatient.id), REPORTER_ID, text);
-
       const newMsgs: ChatMessage[] = [];
+      const p = result.parsed;
+      const severity = p?.severity?.toLowerCase() || 'low';
+      const eventType = p?.event_type?.toLowerCase() || 'other';
+      const summary = (p?.summary || '').toLowerCase();
 
-      // Summary
-      if (result.parsed) {
-        const p = result.parsed;
+      // Detect positive/routine reports
+      const isPositive = (eventType === 'other' && severity === 'low') &&
+        (/doing (well|good|great|fine)|no (issue|concern|incident|notable)|stable|uneventful|routine|all good|normal/i
+          .test(summary + ' ' + text));
+
+      // Detect unclear/nonsensical input
+      const isUnclear = eventType === 'other' && severity === 'low' &&
+        !isPositive && text.trim().split(/\s+/).length < 4 &&
+        !/(agitat|wander|refus|fall|confus|aggress|sundow|sleep)/i.test(text);
+
+      if (isPositive) {
+        // Friendly acknowledgment, no action buttons
+        newMsgs.push({
+          id: nextId(),
+          type: 'notification',
+          content: `✅ Noted — ${selectedPatient.name} is doing well. No action needed.`,
+          timestamp: new Date(),
+        });
+      } else if (isUnclear) {
+        // Ask for clarification
+        newMsgs.push({
+          id: nextId(),
+          type: 'system',
+          content: `I didn't catch a specific event. Could you describe what happened? For example:\n• "Mrs. Thompson is refusing her medication"\n• "Patient wandering in the hallway"\n• "Agitation after lunch"`,
+          timestamp: new Date(),
+        });
+      } else {
+        // Real behavioral event — show full flow
         newMsgs.push({
           id: nextId(),
           type: 'summary',
-          content: `[${p.event_type} · ${p.severity} · ${p.summary || ''}]`,
+          content: `${p.event_type} · ${p.severity}${p.trigger && p.trigger !== 'Unknown' ? ` · Trigger: ${p.trigger}` : ''}`,
           data: result.parsed,
           timestamp: new Date(),
         });
-      }
 
-      // Check if protocols have actual steps
-      const hasProtocols = result.protocols?.some(
-        p => p.steps && p.steps.length > 0 && p.steps[0] !== '' && p.steps[0] !== 'No specific protocols needed. Continue monitoring.'
-      );
+        // Protocol card (only if real steps exist)
+        const hasProtocols = result.protocols?.some(
+          pr => pr.steps && pr.steps.length > 0 && pr.steps[0] !== '' &&
+            pr.steps[0] !== 'No specific protocols needed. Continue monitoring.'
+        );
+        if (hasProtocols) {
+          newMsgs.push({
+            id: nextId(),
+            type: 'protocol',
+            content: '',
+            data: result.protocols,
+            timestamp: new Date(),
+          });
+        }
 
-      // Protocol card (only if real steps exist)
-      if (hasProtocols) {
+        // Action buttons
         newMsgs.push({
           id: nextId(),
-          type: 'protocol',
+          type: 'actions',
           content: '',
-          data: result.protocols,
+          data: { eventId: result.event_id },
           timestamp: new Date(),
         });
       }
-
-      // Action buttons
-      newMsgs.push({
-        id: nextId(),
-        type: 'actions',
-        content: '',
-        data: { eventId: result.event_id },
-        timestamp: new Date(),
-      });
 
       addMessages(newMsgs);
     } catch (e) {
