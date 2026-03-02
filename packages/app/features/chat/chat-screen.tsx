@@ -13,6 +13,7 @@ import {
   Platform,
 } from 'react-native';
 import { colors } from '../../theme/colors';
+import { VoiceButton } from '../../components/voice-button';
 import {
   getPatients,
   reportEvent,
@@ -303,10 +304,11 @@ export function ChatAppScreen() {
         (/doing (well|good|great|fine)|no (issue|concern|incident|notable)|stable|uneventful|routine|all good|normal/i
           .test(summary + ' ' + text));
 
-      // Detect unclear/nonsensical input
+      // Detect unclear/nonsensical input — only if LLM also couldn't parse anything meaningful
+      const hasMeaningSummary = summary && !summary.includes('no event description') && !summary.includes('unclear');
+      const hasSymptom = /(dizz|pain|fever|nausea|vomit|agitat|wander|refus|fall|confus|aggress|sundow|sleep|cry|yell|scream|hit|kick|anxious|restless|upset)/i.test(text + ' ' + summary);
       const isUnclear = eventType === 'other' && severity === 'low' &&
-        !isPositive && text.trim().split(/\s+/).length < 4 &&
-        !/(agitat|wander|refus|fall|confus|aggress|sundow|sleep)/i.test(text);
+        !isPositive && !hasSymptom && !hasMeaningSummary;
 
       if (isPositive) {
         // Friendly acknowledgment, no action buttons
@@ -431,11 +433,12 @@ export function ChatAppScreen() {
       {/* Input Bar */}
       {selectedPatient && (
         <View style={styles.inputBar}>
+          <VoiceButton onRecordingComplete={() => {}} disabled={loading} />
           <TextInput
             style={styles.textInput}
             value={inputText}
             onChangeText={setInputText}
-            placeholder="Report an event or ask a question..."
+            placeholder="Describe what happened..."
             placeholderTextColor={colors.textLight}
             multiline
             onSubmitEditing={handleSend}
@@ -574,11 +577,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   summaryText: {
-    fontSize: 13,
-    color: colors.textLight,
-    backgroundColor: '#F5F5F5',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    backgroundColor: '#F0F0F5',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -609,9 +613,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   protocolStepText: {
-    fontSize: 14,
+    fontSize: 15,
     color: colors.text,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   protocolSource: {
     fontSize: 11,
@@ -650,9 +654,9 @@ const styles = StyleSheet.create({
   },
   // Notification
   notificationText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontStyle: 'italic',
+    fontSize: 15,
+    color: colors.text,
+    fontWeight: '500',
   },
   // Handoff card
   handoffCard: {
@@ -679,8 +683,11 @@ const styles = StyleSheet.create({
   },
   // System
   systemText: {
-    fontSize: 13,
-    color: colors.textLight,
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    textAlign: 'center',
+    paddingHorizontal: 16,
   },
   // Loading
   loadingRow: {
