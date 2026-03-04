@@ -40,3 +40,4 @@ const nextConfig = {
 };
 
 module.exports = withSerwist(nextConfig);
+// trigger rebuild Tue Mar  3 22:20:29 EST 2026
