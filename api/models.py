@@ -11,7 +11,11 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
-DATABASE_URL = "sqlite:///./memowell.db"
+import os
+
+# Use persistent volume path if available, otherwise local
+_db_path = os.environ.get("DB_PATH", "./memowell.db")
+DATABASE_URL = os.environ.get("DATABASE_URL", f"sqlite:///{_db_path}")
 
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
