@@ -7,6 +7,7 @@ import {
   TextInput,
   Animated,
   Modal,
+  ScrollView,
   StyleSheet,
   Dimensions,
   ActivityIndicator,
@@ -484,8 +485,8 @@ export function ChatAppScreen() {
       <Modal visible={drawerOpen} transparent animationType="none" onRequestClose={() => setDrawerOpen(false)}>
         <TouchableOpacity style={styles.drawerOverlay} activeOpacity={1} onPress={() => setDrawerOpen(false)}>
           <Animated.View style={[styles.drawer, { transform: [{ translateX: drawerAnim }] }]}>
-            <TouchableOpacity activeOpacity={1}>
-              <Text style={styles.drawerTitle}>Patients</Text>
+            <Text style={styles.drawerTitle}>Patients</Text>
+            <ScrollView style={styles.drawerScroll} showsVerticalScrollIndicator={true}>
               {patients.map(p => (
                 <TouchableOpacity
                   key={p.id}
@@ -499,7 +500,7 @@ export function ChatAppScreen() {
                   <Text style={styles.drawerItemSub}>{p.diagnosis} · Age {p.age}</Text>
                 </TouchableOpacity>
               ))}
-            </TouchableOpacity>
+            </ScrollView>
           </Animated.View>
         </TouchableOpacity>
       </Modal>
@@ -790,7 +791,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: colors.text,
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  drawerScroll: {
+    flex: 1,
   },
   drawerItem: {
     paddingVertical: 12,
