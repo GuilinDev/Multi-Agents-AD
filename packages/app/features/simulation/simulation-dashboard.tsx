@@ -10,18 +10,18 @@ import {
 import { getSimulationDashboard } from '../../api/client';
 
 const COLORS = {
-  bg: '#0d1117',
-  surface: '#161b22',
-  border: '#30363d',
-  text: '#c9d1d9',
-  textDim: '#8b949e',
-  blue: '#58a6ff',
-  green: '#3fb950',
-  cyan: '#56d4dd',
-  purple: '#a371f7',
-  yellow: '#d29922',
-  red: '#f85149',
-  orange: '#ff7b72',
+  bg: '#f8f9fa',
+  surface: '#ffffff',
+  border: '#e9ecef',
+  text: '#212529',
+  textDim: '#6c757d',
+  blue: '#4a90d9',
+  green: '#52b788',
+  cyan: '#5ba4cf',
+  purple: '#8b7ec8',
+  yellow: '#e0a458',
+  red: '#d9534f',
+  orange: '#e8845f',
 };
 
 const EVENT_COLORS: Record<string, string> = {
@@ -61,8 +61,8 @@ interface DashboardData {
 
 function StatCard({ label, value, suffix, color }: { label: string; value: number | string; suffix?: string; color: string }) {
   return (
-    <View style={[styles.statCard, { borderTopColor: color }]}>
-      <Text style={[styles.statValue, { color }]}>{value}{suffix}</Text>
+    <View style={[styles.statCard, { borderLeftColor: color, borderLeftWidth: 3 }]}>
+      <Text style={[styles.statValue, { color: COLORS.text }]}>{value}{suffix}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
@@ -74,7 +74,7 @@ function BarRow({ label, value, maxValue, color }: { label: string; value: numbe
     <View style={styles.barRow}>
       <Text style={styles.barLabel}>{label}</Text>
       <View style={styles.barTrack}>
-        <View style={[styles.barFill, { width: `${pct}%`, backgroundColor: color }]} />
+        <View style={[styles.barFill, { width: `${pct}%`, backgroundColor: color, opacity: 0.75 }]} />
       </View>
       <Text style={styles.barValue}>{value}</Text>
     </View>
@@ -229,24 +229,26 @@ const styles = StyleSheet.create({
   center: { justifyContent: 'center', alignItems: 'center' },
   content: { padding: 20, paddingBottom: 60 },
   text: { color: COLORS.text, fontSize: 14 },
-  title: { fontSize: 28, fontWeight: '700', color: COLORS.text, textAlign: 'center' },
-  subtitle: { fontSize: 14, color: COLORS.blue, textAlign: 'center', marginBottom: 24, letterSpacing: 1 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: COLORS.text, marginTop: 24, marginBottom: 12 },
+  title: { fontSize: 26, fontWeight: '600', color: COLORS.text, textAlign: 'center' },
+  subtitle: { fontSize: 13, color: COLORS.textDim, textAlign: 'center', marginBottom: 24, letterSpacing: 0.5 },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: COLORS.text, marginTop: 28, marginBottom: 12 },
   statsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
   statCard: {
-    flex: 1, backgroundColor: COLORS.surface, borderRadius: 12, padding: 16,
-    borderTopWidth: 3, borderColor: COLORS.border,
-  },
-  statValue: { fontSize: 28, fontWeight: '700' },
-  statLabel: { fontSize: 12, color: COLORS.textDim, marginTop: 4 },
-  card: {
-    backgroundColor: COLORS.surface, borderRadius: 12, padding: 16,
+    flex: 1, backgroundColor: COLORS.surface, borderRadius: 10, padding: 16,
     borderWidth: 1, borderColor: COLORS.border,
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+  },
+  statValue: { fontSize: 26, fontWeight: '600' },
+  statLabel: { fontSize: 11, color: COLORS.textDim, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+  card: {
+    backgroundColor: COLORS.surface, borderRadius: 10, padding: 16,
+    borderWidth: 1, borderColor: COLORS.border,
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
   },
   barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   barLabel: { width: 120, fontSize: 13, color: COLORS.textDim },
-  barTrack: { flex: 1, height: 20, backgroundColor: COLORS.bg, borderRadius: 4, overflow: 'hidden', marginHorizontal: 8 },
-  barFill: { height: '100%', borderRadius: 4 },
+  barTrack: { flex: 1, height: 22, backgroundColor: '#f1f3f5', borderRadius: 6, overflow: 'hidden', marginHorizontal: 10 },
+  barFill: { height: '100%', borderRadius: 6 },
   barValue: { width: 40, fontSize: 13, color: COLORS.text, textAlign: 'right', fontWeight: '600' },
   errorText: { color: COLORS.red, fontSize: 16, marginBottom: 16 },
   retryBtn: { backgroundColor: COLORS.blue, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 8 },
