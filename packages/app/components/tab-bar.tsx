@@ -5,6 +5,7 @@ import { colors } from '../theme/colors';
 
 const TABS = [
   { key: 'home', label: 'Home', icon: '🏠', path: '/' },
+  { key: 'simulation', label: 'Simulation', icon: '🔬', path: '/simulation' },
   { key: 'dashboard', label: 'Dashboard', icon: '📊', path: '/dashboard' },
   { key: 'handoff', label: 'Handoff', icon: '📋', path: '/handoff' },
   { key: 'settings', label: 'Settings', icon: '⚙️', path: '/settings' },

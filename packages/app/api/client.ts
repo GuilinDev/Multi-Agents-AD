@@ -139,6 +139,12 @@ export async function acknowledgeHandoff(handoffId: number): Promise<any> {
   return res.json();
 }
 
+// --- Simulation Dashboard ---
+
+export async function getSimulationDashboard(): Promise<any> {
+  return apiGet('/api/events/stats/dashboard');
+}
+
 // --- V2: RAG ---
 
 export async function searchProtocols(

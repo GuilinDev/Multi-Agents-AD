@@ -3,11 +3,13 @@ Event Router — Behavioral event reporting with Context → Intervention → Ou
 """
 
 from datetime import datetime, timezone, date
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
-from models import get_db, BehavioralEvent, Patient, CareStaff, EventType, Severity, utcnow
+from models import get_db, BehavioralEvent, Patient, CareStaff, Facility, EventType, Severity, ShiftType, utcnow
 from schemas_v2 import (
     EventReportResponse, EventParsed, ProtocolStep,
     InterventionRequest, OutcomeRequest, EventOut,
@@ -216,3 +218,193 @@ def get_event(event_id: int, db: Session = Depends(get_db)):
     if not event:
         raise HTTPException(404, "Event not found")
     return event
+
+
+# --- Bulk Import (bypass LLM, for syncing pre-parsed simulation data) ---
+
+class BulkPatient(BaseModel):
+    name: str
+    room: str = ""
+    diagnosis: str = ""
+    cognitive_level: str = ""
+    medications: list = []
+    special_notes: str = ""
+
+class BulkEvent(BaseModel):
+    patient_name: str
+    reporter_name: str = "Simulation Agent"
+    shift: str = "Day"
+    event_type: str = "Other"
+    severity: str = "Medium"
+    description: str
+    location: str = ""
+    trigger: str = ""
+    protocol_matched: list = []
+    intervention_description: str = ""
+    outcome_description: str = ""
+    resolved: bool = False
+    event_at: Optional[str] = None
+
+class BulkImportRequest(BaseModel):
+    patients: List[BulkPatient] = []
+    events: List[BulkEvent] = []
+
+@router.post("/bulk-import")
+def bulk_import(req: BulkImportRequest, db: Session = Depends(get_db)):
+    """
+    Bulk import pre-parsed simulation data. No LLM calls.
+    Creates patients if they don't exist, then inserts events directly.
+    """
+    # Ensure facility exists
+    facility = db.query(Facility).first()
+    if not facility:
+        facility = Facility(name="Sunrise Memory Care", address="Simulation")
+        db.add(facility)
+        db.flush()
+
+    # Ensure at least one reporter exists
+    reporter = db.query(CareStaff).first()
+    if not reporter:
+        reporter = CareStaff(facility_id=facility.id, name="Simulation Agent", role="CNA")
+        db.add(reporter)
+        db.flush()
+
+    # Create patients
+    patient_map = {}
+    for p in req.patients:
+        existing = db.query(Patient).filter(Patient.name == p.name).first()
+        if existing:
+            patient_map[p.name] = existing.id
+        else:
+            new_p = Patient(
+                facility_id=facility.id,
+                name=p.name, room=p.room, diagnosis=p.diagnosis,
+                cognitive_level=p.cognitive_level, medications=p.medications,
+                special_notes=p.special_notes,
+            )
+            db.add(new_p)
+            db.flush()
+            patient_map[p.name] = new_p.id
+
+    # Build patient name lookup for events (include existing patients not in req.patients)
+    all_patients = db.query(Patient).all()
+    for ap in all_patients:
+        if ap.name not in patient_map:
+            patient_map[ap.name] = ap.id
+
+    # Import events
+    imported = 0
+    skipped = 0
+    for e in req.events:
+        pid = patient_map.get(e.patient_name)
+        if not pid:
+            # Auto-create patient
+            new_p = Patient(facility_id=facility.id, name=e.patient_name, room="TBD")
+            db.add(new_p)
+            db.flush()
+            patient_map[e.patient_name] = new_p.id
+            pid = new_p.id
+
+        # Map enums safely
+        try:
+            etype = EventType(e.event_type)
+        except ValueError:
+            etype = EventType.OTHER
+        try:
+            sev = Severity(e.severity)
+        except ValueError:
+            sev = Severity.MEDIUM
+
+        evt = BehavioralEvent(
+            patient_id=pid,
+            reporter_id=reporter.id,
+            shift=e.shift,
+            event_type=etype,
+            severity=sev,
+            description=e.description,
+            location=e.location,
+            trigger=e.trigger,
+            protocol_matched=e.protocol_matched,
+            intervention_description=e.intervention_description or None,
+            intervention_at=utcnow() if e.intervention_description else None,
+            outcome_description=e.outcome_description or None,
+            outcome_at=utcnow() if e.outcome_description else None,
+            resolved=e.resolved,
+            event_at=datetime.fromisoformat(e.event_at) if e.event_at else utcnow(),
+        )
+        db.add(evt)
+        imported += 1
+
+    db.commit()
+    return {
+        "status": "ok",
+        "patients_in_map": len(patient_map),
+        "events_imported": imported,
+        "events_skipped": skipped,
+    }
+
+
+# --- Simulation Dashboard Stats ---
+
+@router.get("/stats/dashboard")
+def simulation_dashboard(db: Session = Depends(get_db)):
+    """Aggregate stats for the simulation dashboard. No LLM calls."""
+    total_events = db.query(BehavioralEvent).count()
+    total_patients = db.query(Patient).count()
+    patients_with_events = db.query(BehavioralEvent.patient_id).distinct().count()
+
+    # Event type distribution
+    type_dist = db.query(
+        BehavioralEvent.event_type, func.count(BehavioralEvent.id)
+    ).group_by(BehavioralEvent.event_type).all()
+    event_types = {str(t): c for t, c in type_dist}
+
+    # Severity distribution
+    sev_dist = db.query(
+        BehavioralEvent.severity, func.count(BehavioralEvent.id)
+    ).group_by(BehavioralEvent.severity).all()
+    severities = {str(s): c for s, c in sev_dist}
+
+    # Shift distribution
+    shift_dist = db.query(
+        BehavioralEvent.shift, func.count(BehavioralEvent.id)
+    ).group_by(BehavioralEvent.shift).all()
+    shifts = {str(s): c for s, c in shift_dist}
+
+    # Protocol coverage (events with non-empty protocol_matched)
+    events_with_protocols = db.query(BehavioralEvent).filter(
+        BehavioralEvent.protocol_matched.isnot(None),
+        BehavioralEvent.protocol_matched != '[]',
+        BehavioralEvent.protocol_matched != 'null',
+    ).count()
+    protocol_coverage = round(events_with_protocols / total_events * 100, 1) if total_events else 0
+
+    # Intervention rate
+    events_with_intervention = db.query(BehavioralEvent).filter(
+        BehavioralEvent.intervention_description.isnot(None),
+    ).count()
+    intervention_rate = round(events_with_intervention / total_events * 100, 1) if total_events else 0
+
+    # Resolution rate
+    resolved_events = db.query(BehavioralEvent).filter(BehavioralEvent.resolved == True).count()
+    resolution_rate = round(resolved_events / total_events * 100, 1) if total_events else 0
+
+    # Top patients by event count
+    top_patients = db.query(
+        Patient.name, func.count(BehavioralEvent.id).label("count")
+    ).join(BehavioralEvent).group_by(Patient.name).order_by(
+        func.count(BehavioralEvent.id).desc()
+    ).limit(10).all()
+
+    return {
+        "total_events": total_events,
+        "total_patients": total_patients,
+        "patients_with_events": patients_with_events,
+        "event_types": event_types,
+        "severities": severities,
+        "shifts": shifts,
+        "protocol_coverage_pct": protocol_coverage,
+        "intervention_rate_pct": intervention_rate,
+        "resolution_rate_pct": resolution_rate,
+        "top_patients": [{"name": n, "events": c} for n, c in top_patients],
+    }
