@@ -9,41 +9,43 @@ import {
 } from 'react-native';
 import { getSimulationDashboard } from '../../api/client';
 
-const COLORS = {
-  bg: '#f8f9fa',
-  surface: '#ffffff',
-  border: '#e9ecef',
-  text: '#212529',
-  textDim: '#6c757d',
-  blue: '#4a90d9',
-  green: '#52b788',
-  cyan: '#5ba4cf',
-  purple: '#8b7ec8',
-  yellow: '#e0a458',
-  red: '#d9534f',
-  orange: '#e8845f',
+// ArkSim-inspired color palette — muted, professional
+const C = {
+  bg: '#f5f7fa',
+  card: '#ffffff',
+  border: '#e8ecef',
+  text: '#1a1a1a',
+  textSec: '#64748b',
+  textDim: '#94a3b8',
+  blue: '#3b82f6',
+  green: '#10b981',
+  indigo: '#6366f1',
+  amber: '#f59e0b',
+  pink: '#ec4899',
+  red: '#ef4444',
+  purple: '#8b5cf6',
+  teal: '#14b8a6',
 };
 
-const EVENT_COLORS: Record<string, string> = {
-  Agitation: COLORS.yellow,
-  Confusion: COLORS.blue,
-  Refusal: COLORS.purple,
-  Wandering: COLORS.cyan,
-  Fall: COLORS.red,
-  Aggression: COLORS.orange,
-  Sundowning: COLORS.yellow,
-  Sleep_Disturbance: COLORS.cyan,
-  Other: COLORS.textDim,
-  // Also handle uppercase keys from older data
-  AGITATION: COLORS.yellow,
-  CONFUSION: COLORS.blue,
-  REFUSAL: COLORS.purple,
-  WANDERING: COLORS.cyan,
-  FALL: COLORS.red,
-  AGGRESSION: COLORS.orange,
-  SUNDOWNING: COLORS.yellow,
-  SLEEP_DISTURBANCE: COLORS.cyan,
-  OTHER: COLORS.textDim,
+const METRIC_COLORS: Record<string, string> = {
+  Agitation: C.amber,
+  Confusion: C.blue,
+  Refusal: C.indigo,
+  Wandering: C.teal,
+  Fall: C.red,
+  Aggression: C.pink,
+  Sundowning: C.amber,
+  Sleep_Disturbance: C.purple,
+  Other: C.textDim,
+  AGITATION: C.amber,
+  CONFUSION: C.blue,
+  REFUSAL: C.indigo,
+  WANDERING: C.teal,
+  FALL: C.red,
+  AGGRESSION: C.pink,
+  SUNDOWNING: C.amber,
+  SLEEP_DISTURBANCE: C.purple,
+  OTHER: C.textDim,
 };
 
 interface DashboardData {
@@ -59,28 +61,63 @@ interface DashboardData {
   top_patients: { name: string; events: number }[];
 }
 
-function StatCard({ label, value, suffix, color }: { label: string; value: number | string; suffix?: string; color: string }) {
+/* ─── Metric Card (ArkSim style: left color border, large number) ─── */
+function MetricCard({ label, value, suffix, color, icon }: {
+  label: string; value: number | string; suffix?: string; color: string; icon: string;
+}) {
   return (
-    <View style={[styles.statCard, { borderLeftColor: color, borderLeftWidth: 3 }]}>
-      <Text style={[styles.statValue, { color: COLORS.text }]}>{value}{suffix}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+    <View style={[s.metricCard, { borderLeftColor: color, borderLeftWidth: 4 }]}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.metricLabel}>{label}</Text>
+          <Text style={s.metricValue}>{value}{suffix}</Text>
+        </View>
+        <Text style={[s.metricIcon, { color }]}>{icon}</Text>
+      </View>
     </View>
   );
 }
 
-function BarRow({ label, value, maxValue, color }: { label: string; value: number; maxValue: number; color: string }) {
+/* ─── Progress Bar (ArkSim style: thin gradient bar with score badge) ─── */
+function ProgressMetric({ label, value, color, badge }: {
+  label: string; value: number; color: string; badge: string;
+}) {
+  const badgeColor = value >= 80 ? '#dcfce7' : value >= 60 ? '#dbeafe' : value >= 40 ? '#fef3c7' : '#fecaca';
+  const badgeText = value >= 80 ? '#15803d' : value >= 60 ? '#1d4ed8' : value >= 40 ? '#92400e' : '#dc2626';
+
+  return (
+    <View style={[s.perfItem, { borderLeftColor: color }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+        <Text style={s.perfLabel}>{label}</Text>
+        <View style={[s.badge, { backgroundColor: badgeColor }]}>
+          <Text style={[s.badgeText, { color: badgeText }]}>{badge}</Text>
+        </View>
+      </View>
+      <Text style={s.perfValue}>{value}%</Text>
+      <View style={s.barContainer}>
+        <View style={[s.bar, { width: `${value}%`, backgroundColor: color }]} />
+      </View>
+    </View>
+  );
+}
+
+/* ─── Bar Chart Row ─── */
+function BarRow({ label, value, maxValue, color }: {
+  label: string; value: number; maxValue: number; color: string;
+}) {
   const pct = maxValue > 0 ? (value / maxValue) * 100 : 0;
   return (
-    <View style={styles.barRow}>
-      <Text style={styles.barLabel}>{label}</Text>
-      <View style={styles.barTrack}>
-        <View style={[styles.barFill, { width: `${pct}%`, backgroundColor: color, opacity: 0.75 }]} />
+    <View style={s.barRow}>
+      <Text style={s.barLabel}>{label.replace('_', ' ')}</Text>
+      <View style={s.barTrack}>
+        <View style={[s.barFill, { width: `${Math.max(pct, 2)}%`, backgroundColor: color }]} />
       </View>
-      <Text style={styles.barValue}>{value}</Text>
+      <Text style={s.barCount}>{value}</Text>
     </View>
   );
 }
 
+/* ─── Main Dashboard ─── */
 export function SimulationDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,156 +140,166 @@ export function SimulationDashboard() {
 
   if (loading) {
     return (
-      <View style={[styles.screen, styles.center]}>
-        <ActivityIndicator size="large" color={COLORS.blue} />
-        <Text style={[styles.text, { marginTop: 12 }]}>Loading simulation data...</Text>
+      <View style={[s.screen, s.center]}>
+        <ActivityIndicator size="large" color={C.blue} />
+        <Text style={{ color: C.textSec, marginTop: 12, fontSize: 14 }}>Loading simulation data...</Text>
       </View>
     );
   }
 
   if (error || !data) {
     return (
-      <View style={[styles.screen, styles.center]}>
-        <Text style={styles.errorText}>⚠️ {error || 'No data'}</Text>
-        <TouchableOpacity style={styles.retryBtn} onPress={refresh}>
-          <Text style={styles.retryText}>Retry</Text>
+      <View style={[s.screen, s.center]}>
+        <Text style={{ color: C.red, fontSize: 16, marginBottom: 16 }}>⚠ {error || 'No data'}</Text>
+        <TouchableOpacity style={s.retryBtn} onPress={refresh}>
+          <Text style={{ color: '#fff', fontWeight: '600' }}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   const maxEventType = Math.max(...Object.values(data.event_types), 1);
-  const maxPatientEvents = data.top_patients.length > 0 ? data.top_patients[0].events : 1;
+  const maxSeverity = Math.max(...Object.values(data.severities), 1);
+  const maxPatient = data.top_patients.length > 0 ? data.top_patients[0].events : 1;
+
+  const protocolBadge = data.protocol_coverage_pct >= 90 ? 'Excellent' : data.protocol_coverage_pct >= 70 ? 'Good' : 'Needs Work';
+  const interventionBadge = data.intervention_rate_pct >= 80 ? 'Excellent' : data.intervention_rate_pct >= 60 ? 'Good' : 'Needs Work';
+  const resolutionBadge = data.resolution_rate_pct >= 50 ? 'Good' : data.resolution_rate_pct >= 20 ? 'Fair' : 'Needs Work';
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      {/* Header */}
-      <Text style={styles.title}>🔬 CareLoop AI</Text>
-      <Text style={styles.subtitle}>Multi-Agent Simulation Dashboard</Text>
-
-      {/* Key Metrics */}
-      <View style={styles.statsRow}>
-        <StatCard label="Total Events" value={data.total_events} color={COLORS.blue} />
-        <StatCard label="Patients" value={data.patients_with_events} color={COLORS.green} />
-        <StatCard label="Protocol Coverage" value={data.protocol_coverage_pct} suffix="%" color={COLORS.cyan} />
-      </View>
-      <View style={styles.statsRow}>
-        <StatCard label="Intervention Rate" value={data.intervention_rate_pct} suffix="%" color={COLORS.purple} />
-        <StatCard label="Resolution Rate" value={data.resolution_rate_pct} suffix="%" color={COLORS.green} />
-        <StatCard label="Models Tested" value={4} color={COLORS.yellow} />
+    <ScrollView style={s.screen} contentContainerStyle={s.content}>
+      {/* ── Header ── */}
+      <View style={s.header}>
+        <Text style={s.title}>CareLoop AI — Simulation Report</Text>
+        <Text style={s.subtitle}>Multi-Agent Nursing Home Simulation · 4 Models · 27B–32B Parameters</Text>
       </View>
 
-      {/* Event Type Distribution */}
-      <Text style={styles.sectionTitle}>Event Type Distribution</Text>
-      <View style={styles.card}>
+      {/* ── Key Metrics (ArkSim grid style) ── */}
+      <View style={s.metricsGrid}>
+        <MetricCard label="Total Events" value={data.total_events} color={C.blue} icon="📊" />
+        <MetricCard label="Patients Simulated" value={data.patients_with_events} color={C.green} icon="🏥" />
+        <MetricCard label="Event Types" value={Object.keys(data.event_types).length} color={C.indigo} icon="🏷️" />
+        <MetricCard label="AI Models Tested" value={4} color={C.amber} icon="🤖" />
+      </View>
+
+      {/* ── Performance Scores (ArkSim progress bar style) ── */}
+      <Text style={s.sectionTitle}>📈 Performance Metrics</Text>
+      <View style={s.perfSection}>
+        <View style={s.perfGrid}>
+          <ProgressMetric label="Protocol Coverage" value={data.protocol_coverage_pct} color={C.green} badge={protocolBadge} />
+          <ProgressMetric label="Intervention Rate" value={data.intervention_rate_pct} color={C.blue} badge={interventionBadge} />
+          <ProgressMetric label="Resolution Rate" value={data.resolution_rate_pct} color={C.purple} badge={resolutionBadge} />
+        </View>
+        <View style={s.methodNote}>
+          <Text style={s.methodText}>
+            Protocol coverage measures events matched to evidence-based guidelines (CMS, APA, NICE). 
+            Intervention rate tracks caregiver response. Resolution rate measures completed outcome loops.
+          </Text>
+        </View>
+      </View>
+
+      {/* ── Event Distribution ── */}
+      <Text style={s.sectionTitle}>🏷️ Event Type Distribution</Text>
+      <View style={s.chartCard}>
         {Object.entries(data.event_types)
           .sort((a, b) => b[1] - a[1])
           .map(([type, count]) => (
-            <BarRow
-              key={type}
-              label={type.replace('_', ' ')}
-              value={count}
-              maxValue={maxEventType}
-              color={EVENT_COLORS[type] || COLORS.textDim}
-            />
+            <BarRow key={type} label={type} value={count} maxValue={maxEventType}
+              color={METRIC_COLORS[type] || C.textDim} />
           ))}
       </View>
 
-      {/* Severity Distribution */}
-      <Text style={styles.sectionTitle}>Severity Distribution</Text>
-      <View style={styles.card}>
+      {/* ── Severity ── */}
+      <Text style={s.sectionTitle}>⚠️ Severity Distribution</Text>
+      <View style={s.chartCard}>
         {Object.entries(data.severities)
           .sort((a, b) => {
             const order = ['Critical', 'High', 'Medium', 'Low', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
             return order.indexOf(a[0]) - order.indexOf(b[0]);
           })
           .map(([sev, count]) => {
-            const s = sev.toUpperCase();
-            return (
-              <BarRow
-                key={sev}
-                label={sev}
-                value={count}
-                maxValue={Math.max(...Object.values(data.severities), 1)}
-                color={s.includes('CRITICAL') ? COLORS.red : s.includes('HIGH') ? COLORS.orange : s.includes('MEDIUM') ? COLORS.yellow : COLORS.green}
-              />
-            );
+            const u = sev.toUpperCase();
+            const color = u.includes('CRITICAL') ? C.red : u.includes('HIGH') ? C.pink : u.includes('MEDIUM') ? C.amber : C.green;
+            return <BarRow key={sev} label={sev} value={count} maxValue={maxSeverity} color={color} />;
           })}
       </View>
 
-      {/* Shift Distribution */}
-      <Text style={styles.sectionTitle}>Shift Distribution</Text>
-      <View style={styles.card}>
-        {Object.entries(data.shifts).map(([shift, count]) => {
-          const s = shift.toUpperCase();
-          return (
-            <BarRow
-              key={shift}
-              label={shift}
-              value={count}
-              maxValue={Math.max(...Object.values(data.shifts), 1)}
-              color={s.includes('DAY') ? COLORS.yellow : s.includes('EVENING') ? COLORS.purple : COLORS.blue}
-            />
-          );
-        })}
-      </View>
-
-      {/* Top Patients */}
-      <Text style={styles.sectionTitle}>Top Patients by Event Count</Text>
-      <View style={styles.card}>
+      {/* ── Top Patients ── */}
+      <Text style={s.sectionTitle}>👥 Top Patients by Event Count</Text>
+      <View style={s.chartCard}>
         {data.top_patients.map((p, i) => (
-          <BarRow
-            key={p.name}
-            label={`${i + 1}. ${p.name}`}
-            value={p.events}
-            maxValue={maxPatientEvents}
-            color={COLORS.blue}
-          />
+          <BarRow key={p.name} label={`${i + 1}. ${p.name}`} value={p.events} maxValue={maxPatient} color={C.blue} />
         ))}
       </View>
 
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          CareLoop AI — Evidence-based nursing home simulation
-        </Text>
-        <Text style={styles.footerText}>
-          4 models × 3 shifts | 27B–32B parameter range | NVIDIA DGX Spark
-        </Text>
+      {/* ── Footer ── */}
+      <View style={s.footer}>
+        <Text style={s.footerText}>CareLoop AI — Evidence-based nursing home simulation</Text>
+        <Text style={s.footerText}>Powered by Nemotron 30B · Qwen 3.5 27B · DeepSeek-R1 32B · Mistral Small 24B</Text>
+        <Text style={s.footerText}>Running on NVIDIA DGX Spark · 128GB Unified Memory</Text>
       </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.bg },
+/* ─── Styles (ArkSim-inspired) ─── */
+const s = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: C.bg },
   center: { justifyContent: 'center', alignItems: 'center' },
-  content: { padding: 20, paddingBottom: 60 },
-  text: { color: COLORS.text, fontSize: 14 },
-  title: { fontSize: 26, fontWeight: '600', color: COLORS.text, textAlign: 'center' },
-  subtitle: { fontSize: 13, color: COLORS.textDim, textAlign: 'center', marginBottom: 24, letterSpacing: 0.5 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: COLORS.text, marginTop: 28, marginBottom: 12 },
-  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 12 },
-  statCard: {
-    flex: 1, backgroundColor: COLORS.surface, borderRadius: 10, padding: 16,
-    borderWidth: 1, borderColor: COLORS.border,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+  content: { padding: 24, paddingBottom: 60, maxWidth: 1400, alignSelf: 'center', width: '100%' },
+  retryBtn: { backgroundColor: C.blue, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 8 },
+
+  // Header
+  header: { marginBottom: 32 },
+  title: { fontSize: 28, fontWeight: '600', color: C.text, marginBottom: 8 },
+  subtitle: { fontSize: 14, color: C.textSec, lineHeight: 20 },
+
+  // Section
+  sectionTitle: { fontSize: 18, fontWeight: '600', color: C.text, marginTop: 32, marginBottom: 16 },
+
+  // Metric Cards (grid)
+  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 8 },
+  metricCard: {
+    flex: 1, minWidth: 220, backgroundColor: C.card, borderRadius: 12, padding: 24,
+    borderWidth: 1, borderColor: C.border,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 },
   },
-  statValue: { fontSize: 26, fontWeight: '600' },
-  statLabel: { fontSize: 11, color: COLORS.textDim, marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
-  card: {
-    backgroundColor: COLORS.surface, borderRadius: 10, padding: 16,
-    borderWidth: 1, borderColor: COLORS.border,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 },
+  metricLabel: { fontSize: 14, color: C.textSec, fontWeight: '500', marginBottom: 8 },
+  metricValue: { fontSize: 36, fontWeight: '700', color: C.text },
+  metricIcon: { fontSize: 40, opacity: 0.25 },
+
+  // Performance section
+  perfSection: {
+    backgroundColor: '#f8fafc', borderRadius: 12, padding: 24,
+    borderWidth: 1, borderColor: C.border,
   },
-  barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  barLabel: { width: 120, fontSize: 13, color: COLORS.textDim },
-  barTrack: { flex: 1, height: 22, backgroundColor: '#f1f3f5', borderRadius: 6, overflow: 'hidden', marginHorizontal: 10 },
+  perfGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  perfItem: {
+    flex: 1, minWidth: 200, backgroundColor: C.card, borderRadius: 8, padding: 20,
+    borderLeftWidth: 4, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 },
+  },
+  perfLabel: { fontSize: 14, color: C.textSec, fontWeight: '500' },
+  perfValue: { fontSize: 28, fontWeight: '700', color: C.text, marginBottom: 4 },
+  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginLeft: 8 },
+  badgeText: { fontSize: 12, fontWeight: '600' },
+  barContainer: { width: '100%', height: 8, backgroundColor: '#e5e7eb', borderRadius: 4, overflow: 'hidden', marginTop: 8 },
+  bar: { height: '100%', borderRadius: 4 },
+  methodNote: { marginTop: 16, padding: 12, backgroundColor: '#f1f5f9', borderRadius: 8 },
+  methodText: { fontSize: 13, color: C.textSec, lineHeight: 20 },
+
+  // Chart cards
+  chartCard: {
+    backgroundColor: C.card, borderRadius: 12, padding: 20,
+    borderWidth: 1, borderColor: C.border,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 3, shadowOffset: { width: 0, height: 1 },
+  },
+  barRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  barLabel: { width: 130, fontSize: 14, color: C.textSec, fontWeight: '500' },
+  barTrack: { flex: 1, height: 24, backgroundColor: '#f1f5f9', borderRadius: 6, overflow: 'hidden', marginHorizontal: 12 },
   barFill: { height: '100%', borderRadius: 6 },
-  barValue: { width: 40, fontSize: 13, color: COLORS.text, textAlign: 'right', fontWeight: '600' },
-  errorText: { color: COLORS.red, fontSize: 16, marginBottom: 16 },
-  retryBtn: { backgroundColor: COLORS.blue, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 8 },
-  retryText: { color: '#fff', fontWeight: '600' },
-  footer: { marginTop: 32, alignItems: 'center' },
-  footerText: { color: COLORS.textDim, fontSize: 12, marginBottom: 4 },
+  barCount: { width: 40, fontSize: 14, color: C.text, textAlign: 'right', fontWeight: '600' },
+
+  // Footer
+  footer: { marginTop: 40, paddingTop: 20, borderTopWidth: 1, borderTopColor: C.border, alignItems: 'center' },
+  footerText: { color: C.textDim, fontSize: 13, marginBottom: 4 },
 });
