@@ -305,20 +305,30 @@ def bulk_import(req: BulkImportRequest, db: Session = Depends(get_db)):
             patient_map[e.patient_name] = new_p.id
             pid = new_p.id
 
-        # Map enums safely
+        # Map enums safely (handle both "Agitation" and "AGITATION" formats)
         try:
             etype = EventType(e.event_type)
         except ValueError:
-            etype = EventType.OTHER
+            try:
+                etype = EventType(e.event_type.replace('_', ' ').title().replace(' ', '_'))
+            except ValueError:
+                etype = EventType.OTHER
         try:
             sev = Severity(e.severity)
         except ValueError:
-            sev = Severity.MEDIUM
+            try:
+                sev = Severity(e.severity.title())
+            except ValueError:
+                sev = Severity.MEDIUM
+
+        # Map shift
+        shift_map = {"DAY": "Day", "EVENING": "Evening", "NIGHT": "Night", "Day": "Day", "Evening": "Evening", "Night": "Night"}
+        shift_val = shift_map.get(e.shift, e.shift)
 
         evt = BehavioralEvent(
             patient_id=pid,
             reporter_id=reporter.id,
-            shift=e.shift,
+            shift=shift_val,
             event_type=etype,
             severity=sev,
             description=e.description,
@@ -357,19 +367,19 @@ def simulation_dashboard(db: Session = Depends(get_db)):
     type_dist = db.query(
         BehavioralEvent.event_type, func.count(BehavioralEvent.id)
     ).group_by(BehavioralEvent.event_type).all()
-    event_types = {str(t): c for t, c in type_dist}
+    event_types = {(t.value if hasattr(t, 'value') else str(t)): c for t, c in type_dist}
 
     # Severity distribution
     sev_dist = db.query(
         BehavioralEvent.severity, func.count(BehavioralEvent.id)
     ).group_by(BehavioralEvent.severity).all()
-    severities = {str(s): c for s, c in sev_dist}
+    severities = {(s.value if hasattr(s, 'value') else str(s)): c for s, c in sev_dist}
 
     # Shift distribution
     shift_dist = db.query(
         BehavioralEvent.shift, func.count(BehavioralEvent.id)
     ).group_by(BehavioralEvent.shift).all()
-    shifts = {str(s): c for s, c in shift_dist}
+    shifts = {(s.value if hasattr(s, 'value') else str(s)): c for s, c in shift_dist}
 
     # Protocol coverage (events with non-empty protocol_matched)
     events_with_protocols = db.query(BehavioralEvent).filter(

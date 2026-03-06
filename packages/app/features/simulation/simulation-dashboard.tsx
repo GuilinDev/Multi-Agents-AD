@@ -25,6 +25,16 @@ const COLORS = {
 };
 
 const EVENT_COLORS: Record<string, string> = {
+  Agitation: COLORS.yellow,
+  Confusion: COLORS.blue,
+  Refusal: COLORS.purple,
+  Wandering: COLORS.cyan,
+  Fall: COLORS.red,
+  Aggression: COLORS.orange,
+  Sundowning: COLORS.yellow,
+  Sleep_Disturbance: COLORS.cyan,
+  Other: COLORS.textDim,
+  // Also handle uppercase keys from older data
   AGITATION: COLORS.yellow,
   CONFUSION: COLORS.blue,
   REFUSAL: COLORS.purple,
@@ -153,32 +163,38 @@ export function SimulationDashboard() {
       <View style={styles.card}>
         {Object.entries(data.severities)
           .sort((a, b) => {
-            const order = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+            const order = ['Critical', 'High', 'Medium', 'Low', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
             return order.indexOf(a[0]) - order.indexOf(b[0]);
           })
-          .map(([sev, count]) => (
-            <BarRow
-              key={sev}
-              label={sev}
-              value={count}
-              maxValue={Math.max(...Object.values(data.severities), 1)}
-              color={sev === 'CRITICAL' ? COLORS.red : sev === 'HIGH' ? COLORS.orange : sev === 'MEDIUM' ? COLORS.yellow : COLORS.green}
-            />
-          ))}
+          .map(([sev, count]) => {
+            const s = sev.toUpperCase();
+            return (
+              <BarRow
+                key={sev}
+                label={sev}
+                value={count}
+                maxValue={Math.max(...Object.values(data.severities), 1)}
+                color={s.includes('CRITICAL') ? COLORS.red : s.includes('HIGH') ? COLORS.orange : s.includes('MEDIUM') ? COLORS.yellow : COLORS.green}
+              />
+            );
+          })}
       </View>
 
       {/* Shift Distribution */}
       <Text style={styles.sectionTitle}>Shift Distribution</Text>
       <View style={styles.card}>
-        {Object.entries(data.shifts).map(([shift, count]) => (
-          <BarRow
-            key={shift}
-            label={shift}
-            value={count}
-            maxValue={Math.max(...Object.values(data.shifts), 1)}
-            color={shift === 'DAY' ? COLORS.yellow : shift === 'EVENING' ? COLORS.purple : COLORS.blue}
-          />
-        ))}
+        {Object.entries(data.shifts).map(([shift, count]) => {
+          const s = shift.toUpperCase();
+          return (
+            <BarRow
+              key={shift}
+              label={shift}
+              value={count}
+              maxValue={Math.max(...Object.values(data.shifts), 1)}
+              color={s.includes('DAY') ? COLORS.yellow : s.includes('EVENING') ? COLORS.purple : COLORS.blue}
+            />
+          );
+        })}
       </View>
 
       {/* Top Patients */}
