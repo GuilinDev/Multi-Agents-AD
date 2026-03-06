@@ -12,9 +12,9 @@
 
 ## 🎬 Demo Video
 
-[![CareLoop AI Demo](docs/assets/careloop-thumbnail.jpg)](https://github.com/GuilinDev/memowell-ai/raw/main/docs/assets/careloop-demo.mp4)
+[![CareLoop AI Demo](docs/assets/careloop-preview.gif)](https://github.com/GuilinDev/memowell-ai/raw/main/docs/assets/careloop-demo.mp4)
 
-▶️ *Click thumbnail to download & play — 50-second simulation with real ablation data: Act 1 (critical event) → Act 2 (25 patients parallel) → Act 3 (metrics dashboard).*
+> 📺 *GIF preview auto-plays above — [click for full 50s video](https://github.com/GuilinDev/memowell-ai/raw/main/docs/assets/careloop-demo.mp4) with audio. Three acts: critical event → 25-patient parallel simulation → metrics dashboard.*
 
 ---
 
@@ -51,55 +51,53 @@ We benchmark **4 open-source LLMs (27B–32B parameter range)** across **3 nursi
 ## 🏗️ Architecture
 
 ```mermaid
-graph TB
-    subgraph Frontend["🖥️ Frontend — Next.js PWA"]
+graph LR
+    subgraph Frontend["Frontend — Next.js PWA"]
+        direction TB
         F1[Patient Timeline]
         F2[Event Feed]
-        F3[Shift Handoff Reports]
+        F3[Shift Handoff]
     end
 
-    Frontend -->|REST API| Backend
-
-    subgraph Backend["⚙️ FastAPI Backend"]
-        ER[Event Router<br/><i>report → parse → intervene → outcome</i>]
-        HR[Handoff Router<br/><i>generate → acknowledge</i>]
-        PR[Patient Router<br/><i>CRUD</i>]
-        RAG[RAG Pipeline<br/><i>ChromaDB → protocol match → cite</i>]
-        LLM[LLM Service<br/><i>multi-provider: Groq / Ollama</i>]
+    subgraph Core["FastAPI Backend"]
+        direction TB
+        ER[Event Router]
+        RAG[RAG Pipeline]
+        LLM[LLM Service]
+        ER --> RAG --> LLM
     end
 
-    ER --> RAG
-    RAG --> LLM
-
-    subgraph Data["🗄️ Data Layer"]
-        SQL[(SQLite<br/>events · patients<br/>handoffs · staff)]
-        Chroma[(ChromaDB<br/>5,951 chunks<br/>8 guideline PDFs)]
+    subgraph Data["Data Layer"]
+        direction TB
+        SQL[(SQLite)]
+        Chroma[(ChromaDB<br/>5,951 chunks)]
     end
 
-    Backend --> Data
-
-    subgraph Simulation["🔬 Simulation Engine"]
-        SIM[run_simulation.py<br/><i>single model + shift</i>]
-        EXP[run_experiments.sh<br/><i>full ablation: 4×3 matrix</i>]
-        EVAL[evaluator_agent.py<br/><i>automated scoring</i>]
+    subgraph Sim["Simulation Engine"]
+        direction TB
+        RUN[run_simulation.py]
+        EXP[run_experiments.sh]
+        EVAL[evaluator_agent.py]
     end
 
-    Simulation --> Backend
-
-    subgraph Models["🤖 LLM Models (27B–32B)"]
-        M1[Nemotron 30B]
-        M2[Qwen 3.5 27B]
-        M3[DeepSeek-R1 32B]
-        M4[Mistral Small 24B]
+    subgraph Models["LLM Models · 27B–32B"]
+        direction TB
+        M1["Nemotron 30B"]
+        M2["Qwen 3.5 27B"]
+        M3["DeepSeek-R1 32B"]
+        M4["Mistral Small 24B"]
     end
 
+    Frontend -- REST API --> Core
+    Core --> Data
+    Sim --> Core
     LLM --> Models
 
-    style Frontend fill:#1a2332,stroke:#58a6ff,color:#c9d1d9
-    style Backend fill:#1a2332,stroke:#3fb950,color:#c9d1d9
-    style Data fill:#1a2332,stroke:#d29922,color:#c9d1d9
-    style Simulation fill:#1a2332,stroke:#a371f7,color:#c9d1d9
-    style Models fill:#1a2332,stroke:#56d4dd,color:#c9d1d9
+    style Frontend fill:#e8f0fe,stroke:#4285f4,stroke-width:2px,color:#1a1a1a
+    style Core fill:#e6f4ea,stroke:#34a853,stroke-width:2px,color:#1a1a1a
+    style Data fill:#fef7e0,stroke:#f9ab00,stroke-width:2px,color:#1a1a1a
+    style Sim fill:#f3e8fd,stroke:#9334e6,stroke-width:2px,color:#1a1a1a
+    style Models fill:#e0f7fa,stroke:#00acc1,stroke-width:2px,color:#1a1a1a
 ```
 
 ### Multi-Provider LLM Service
@@ -185,11 +183,13 @@ npm install && npm run dev
 
 ---
 
+<!--
 ## 👥 Team
 
 - **Guilin Zhang** — AI/ML Architecture, XAI Research ([Google Scholar](https://scholar.google.com/citations?user=dx-9AfQAAAAJ))
 - **Kai Zhao** — Product Strategy, Industry Partnerships
 - **Dr. Dezhi Wu** — Domain Expertise, HCI × AI in Healthcare (USC)
+-->
 
 ---
 
