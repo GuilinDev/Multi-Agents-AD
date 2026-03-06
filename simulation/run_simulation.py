@@ -248,7 +248,7 @@ async def run_shift(
                 if protocols:
                     print(f"     📋 CareLoop returned {len(protocols)} protocol(s)")
                     for p in protocols[:2]:
-                        steps_list = p.get("steps", [])
+                        steps_list = p.get("steps") or []
                         if steps_list:
                             print(f"        → {steps_list[0][:80]}...")
                 elif api_response.get("positive_report"):

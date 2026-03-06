@@ -45,7 +45,7 @@ class EvaluatorAgent:
 
             # Check if protocols have actionable steps
             for p in protocols:
-                steps = p.get("steps", [])
+                steps = p.get("steps") or []
                 if steps:
                     score += 10
                     feedback.append(f"✅ Protocol has {len(steps)} actionable steps")
@@ -81,7 +81,7 @@ class EvaluatorAgent:
                            "syncope_episodes", "PTSD_flashbacks"]
         if behavior in safety_critical:
             # Higher bar for safety-critical events
-            if protocols and any(len(p.get("steps", [])) >= 2 for p in protocols):
+            if protocols and any(len(p.get("steps") or []) >= 2 for p in protocols):
                 score += 20
                 feedback.append("✅ Safety-critical event received detailed protocol")
             else:

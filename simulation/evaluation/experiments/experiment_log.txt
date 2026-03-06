@@ -1,0 +1,14 @@
+[2026-03-05 18:30:30] ==========================================
+[2026-03-05 18:30:30] CARELOOP ABLATION EXPERIMENTS — START
+[2026-03-05 18:30:30] Models: nemotron-3-nano:30b qwen3.5:27b deepseek-r1:32b mistral-small3.2:24b
+[2026-03-05 18:30:30] Shifts: day evening night
+[2026-03-05 18:30:30] Total runs: 12
+[2026-03-05 18:30:30] ==========================================
+[2026-03-05 18:30:30] --- Loading model: nemotron-3-nano:30b ---
+[2026-03-05 18:30:34] API ready (PID=626728, model=nemotron-3-nano:30b)
+[2026-03-05 18:30:34] Warming up nemotron-3-nano:30b...
+[2026-03-05 18:30:40] START: nemotron_day (model=nemotron-3-nano:30b, shift=day)
+[2026-03-05 19:16:06] DONE: nemotron_day — 2726s (45m)
+[2026-03-05 19:16:11] START: nemotron_evening (model=nemotron-3-nano:30b, shift=evening)
+[2026-03-05 20:02:20] DONE: nemotron_evening — 2769s (46m)
+[2026-03-05 20:02:25] START: nemotron_night (model=nemotron-3-nano:30b, shift=night)
