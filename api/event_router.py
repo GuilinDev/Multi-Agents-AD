@@ -249,6 +249,14 @@ class BulkImportRequest(BaseModel):
     patients: List[BulkPatient] = []
     events: List[BulkEvent] = []
 
+@router.delete("/bulk-clear")
+def bulk_clear(db: Session = Depends(get_db)):
+    """Clear all events and non-seed patients for re-import. Keeps seed patients (id 1-3)."""
+    deleted_events = db.query(BehavioralEvent).delete()
+    deleted_patients = db.query(Patient).filter(Patient.id > 3).delete()
+    db.commit()
+    return {"events_deleted": deleted_events, "patients_deleted": deleted_patients}
+
 @router.post("/bulk-import")
 def bulk_import(req: BulkImportRequest, db: Session = Depends(get_db)):
     """
