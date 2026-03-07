@@ -20,6 +20,20 @@
 ## World Model
 [DreamerV3](https://github.com/nicklashansen/dreamer4)
 
+## 🏥 Virtual Nursing Home — Agent Simulation
+
+![CareLoop Virtual Nursing Home](docs/assets/simulation_day_shift.gif)
+
+> *25 AI patients and 8 AI caregivers running a full Day Shift (07:00→15:00). Red dots = patients (⚠️ agitated / 😴 sleeping / 💊 receiving care). Blue dots = caregivers (🟡 responding to events). Star bursts = behavioral events triggered. 51 events across 16 time steps.*
+
+Our simulation engine models a **32×24 tile memory care facility** with:
+- **25 residents** with diverse dementia profiles (mild/moderate/severe), each with individual behavior patterns and triggers
+- **8 caregivers** with varying skill levels (expert/intermediate/novice) that affect report quality and intervention success
+- **Time-sensitive behaviors** — sundowning peaks at evening, fall risk rises at night, medication refusal spikes at morning med rounds
+- **Closed-loop interaction** — Patient triggers event → Caregiver reports to CareLoop API → RAG retrieves protocol → Intervention executed → Outcome fed back to patient (reduces future trigger probability)
+
+---
+
 ## 🔬 Multi-Model Ablation Study
 
 We benchmark **4 open-source LLMs (27B–32B parameter range)** across **3 nursing shifts** on an NVIDIA DGX Spark (128GB unified memory):
