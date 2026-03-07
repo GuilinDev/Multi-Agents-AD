@@ -365,6 +365,86 @@ npm install && npm run dev
 
 ---
 
+## 🌐 Beyond Healthcare — Domain-Agnostic Agent Framework
+
+CareLoop's simulation engine is designed to **generalize beyond nursing**. The core insight: every domain has *agents with roles*, *events with protocols*, and *evaluations with quality metrics*. The only thing that changes is the **domain specification**.
+
+### The Problem with Current Approach
+
+```python
+# ❌ Today: behavior logic is hardcoded for nursing
+TIME_BEHAVIOR_WEIGHTS = {
+    "evening": {"sundowning": 0.7, "agitation": 0.5, ...}  # nursing-specific
+}
+DESCRIPTION_TEMPLATES = {
+    "sundowning": "Patient is becoming increasingly agitated..."  # can't reuse
+}
+```
+
+Switching to finance or manufacturing means **rewriting the entire simulation/** directory.
+
+### The Solution: Domain Specification → Auto-Generated Agents
+
+```
+┌─────────────────────────────────────────────────────┐
+│  Domain Specification (JSON + reference docs)        │
+│                                                      │
+│  {                                                   │
+│    "domain": "memory_care_facility",                 │
+│    "agent_types": {                                  │
+│      "patient": { "count": 25, "profile_source": "CMS guidelines" },│
+│      "caregiver": { "count": 8, "skill_levels": ["expert","novice"] }│
+│    },                                                │
+│    "event_types": ["sundowning", "fall_risk", ...],  │
+│    "time_sensitive": true,                           │
+│    "evaluation_criteria": ["protocol_compliance", "response_time"],│
+│    "reference_docs": ["cms_appendix_pp.pdf", ...]    │
+│  }                                                   │
+└──────────────────────┬──────────────────────────────┘
+                       │
+                       ▼
+              LLM Agent Generator
+         (reads spec + reference docs)
+                       │
+         ┌─────────────┼─────────────┐
+         ▼             ▼             ▼
+   Agent Profiles  Behavior Model  Eval Rubrics
+   (auto-generated) (learned, not   (domain-specific
+                     hardcoded)      quality metrics)
+         │             │             │
+         └─────────────┼─────────────┘
+                       ▼
+            Generic Simulation Engine
+              (unchanged across domains)
+```
+
+### Three Target Domains
+
+| Domain | Agents | Events | Protocols | Evaluation |
+|--------|--------|--------|-----------|------------|
+| **🏥 Healthcare** (current) | 25 patients + 8 caregivers | Sundowning, fall risk, medication refusal | CMS/NICE/APA guidelines (5,951 RAG chunks) | Protocol compliance, response quality |
+| **📈 Finance** (planned) | Traders + compliance officers + risk managers | Unusual trading patterns, margin calls, regulatory violations | SEC rules, Basel III, internal risk policies | Detection speed, false positive rate |
+| **🏭 Manufacturing** (planned) | Machine operators + QC inspectors + safety officers | Equipment anomalies, quality defects, safety incidents | ISO 9001, OSHA standards, SOPs | Response time, incident escalation accuracy |
+
+### What Stays the Same (Generic Engine)
+
+- **Clock** — time-step simulation with configurable speed
+- **Environment** — spatial grid with locations and agent positions
+- **Event loop** — trigger → report → retrieve protocol → intervene → evaluate outcome
+- **Evaluator** — multi-dimensional scoring (coverage, compliance, quality)
+- **Multi-model benchmarking** — swap LLMs and compare
+
+### What Changes (Domain Specification Only)
+
+- Agent profiles and behavior probability models
+- Reference documents for RAG
+- Natural language templates for event descriptions
+- Evaluation rubrics and pass/fail thresholds
+
+> **Research vision**: If the framework can achieve >80% simulation fidelity across 3+ domains with only a domain spec change (no code modification), it validates **agentic evaluation as a general methodology** — not just a healthcare tool.
+
+---
+
 ## 🗺️ Roadmap
 
 | Phase | Status | Description |
