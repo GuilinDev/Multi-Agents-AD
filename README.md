@@ -24,7 +24,20 @@
 
 ![CareLoop Virtual Nursing Home](docs/assets/simulation_day_shift_v2.gif)
 
-> *25 AI patients and 8 AI caregivers running a full Day Shift (07:00→15:00). Red dots = patients (⚠️ agitated / 😴 sleeping / 💊 receiving care). Blue dots = caregivers (🟡 responding to events). Star bursts = behavioral events triggered. 51 events across 16 time steps.*
+> **Legend:**
+> | Symbol | Meaning |
+> |--------|---------|
+> | 🔴 Red circle (smile) | Patient — calm |
+> | 🔴 Red circle + ⚠️ + pulsing ring | Patient — **agitated** (sundowning, anxiety, etc.) |
+> | 🟤 Dim circle + `zzZ` | Patient — **sleeping** |
+> | 🟣 Purple ring + 💊 | Patient — **receiving care** from a caregiver |
+> | 🟠 Orange circle + ❓ | Patient — **wandering** |
+> | 🔵 Blue circle + white cross | **Caregiver** — patrolling |
+> | 🔵 Blue circle + 🚨 + yellow ring | **Caregiver** — responding to an event |
+> | 🟢 Green circle | **Caregiver** — actively intervening |
+> | Colored tag below agent | **Behavioral event** just triggered (e.g. "anxiety", "refusal") |
+>
+> *25 AI patients × 8 AI caregivers, Day Shift 07:00→15:00, 51 events across 16 time steps.*
 
 Our simulation engine models a **32×24 tile memory care facility** with:
 - **25 residents** with diverse dementia profiles (mild/moderate/severe), each with individual behavior patterns and triggers
