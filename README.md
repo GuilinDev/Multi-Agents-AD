@@ -21,7 +21,7 @@
 
 ## 🏥 Virtual Nursing Home — Agent Simulation
 
-![CareLoop Virtual Nursing Home](docs/assets/simulation_day_shift_v2.gif)
+![CareLoop Virtual Nursing Home](docs/assets/simulation_day_shift_v3.gif)
 
 > **Legend:**
 > | Symbol | Meaning |
